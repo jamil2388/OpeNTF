@@ -1,6 +1,7 @@
 import pandas as pd
 from time import time
 from tqdm import tqdm
+import pickle
 
 from cmn.team import Team
 from cmn.inventor import Inventor
@@ -107,13 +108,14 @@ class Patent(Team):
 
         except FileNotFoundError:
             stats = {}
-            with open(teamsvecs, 'rb') as infile:
-                teamsvecs = pickle.load(infile)
-
-            with open(teams, 'rb') as infile1:
-                teams = pickle.load(infile1)
-
             stats.update(super().get_stats(teamsvecs, output, plot))
+
+            # dic[patent.country] +=1
+            # dic[patent.country, skill] +=1
+
+            # dict[inventor.country] +=1 over inventors' locations
+
+            # inventors' location != patent.location
 
             city = {}; state = {}; country = {}
             geo_loc = [city, state, country]
