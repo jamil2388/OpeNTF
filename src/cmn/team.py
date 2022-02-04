@@ -175,7 +175,7 @@ class Team(object):
     @classmethod
     def generate_sparse_vectors(cls, datapath, output, filter, settings):
         output += f'.filtered.mt{settings["filter"]["min_nteam"]}.ts{settings["filter"]["min_team_size"]}' if filter else ""
-        pkl = f'{output}/teamsvecs_1234.pkl'
+        pkl = f'{output}/teamsvecs.pkl'
         try:
             st = time()
             print(f"Loading sparse matrices from {pkl} ...")
@@ -188,7 +188,6 @@ class Team(object):
             print("File not found! Generating the sparse matrices ...")
             indexes, teams = cls.read_data(datapath, output, index=False, filter=filter, settings=settings)
             st = time()
-            exit()
             # parallel
             with multiprocessing.Pool() as p:
                 n_core = multiprocessing.cpu_count() if settings['ncore'] <= 0 else settings['ncore']
