@@ -18,7 +18,7 @@ output = '../../main/data/preprocessed/imdb/title.basics.tsv'
 from cmn.patent import Patent
 output = '../data/preprocessed/uspt/toy.patent.tsv'
 #output = '../data/preprocessed/uspt/patent.tsv'
-with open(f'{output}/teams.pkl', 'rb') as infile1, open(f'../data/preprocessed/uspt/toy.patent.tsv/teamsvecs.pkl', 'rb') as infile2:
+with open(f'{output}/teams.pkl', 'rb') as infile1, open(f'{output}/teamsvecs.pkl', 'rb') as infile2:
     stats = Patent.get_stats(pickle.load(infile1), pickle.load(infile2), output, plot=False)
 
 # with open(f'{output}/teamsvecs.pkl', 'rb') as infile:
