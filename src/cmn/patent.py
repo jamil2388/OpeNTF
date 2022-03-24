@@ -104,6 +104,7 @@ class Patent(Team):
         try:
             print("Loading the stats pickle ...")
             with open(f'{output}/stats.pkl', 'rb') as infile:
+                print('Found the file')
                 stats = pickle.load(infile)
 
                 if plot: Team.plot_stats(stats, output)
@@ -113,97 +114,54 @@ class Patent(Team):
             print('Stats.pkl File Not Found. Re-Generating Stats.')
             stats = {}
             t = time()
-
-            with open(teamsvecs, 'rb') as infile:
-                teamsvecs = pickle.load(infile)
-
-            with open(teams, 'rb') as infile1:
-                teams = pickle.load(infile1)
-
             stats.update(super().get_stats(teamsvecs, output, plot))
             os.remove(f'{output}/stats.pkl')
             print('Deleted Redundant File')
-            print(f'Time Taken to do Stats from Super Class {(time() - t)/60} Minutes')
+            print(f'Time Taken to do Stats from Super Class {(time() - t) / 60} Minutes')
             t1 = time()
-
-            city = {}; state = {}; country = {}; t_country = 0
-            avg_country = {}; avg_state = {}; avg_city = {}; in_country = {}
-            unq_country = set(); unq_state = set(); unq_city = set()
+            t_country = 0;
+            unq_country = set()
             total_patents = len(teams.keys())
             for key in tqdm(teams.keys()):
-                t_city = set(); t_state = set();
                 loc = teams[key].members_details
-                for item in loc: # [][][][][]
-                    #city_name, state_name, country_name = item
+                for item in loc:
                     _, _, country_name = item
-                    #t_city.add(city_name); t_state.add(state_name); t_country.add(country_name)
                     t_country = t_country + 1
-                    # if city_name in city.keys(): city[city_name] = city[city_name] + 1;
-                    # else:
-                    #     city[city_name] = 1
-                    #     unq_city.add(city_name)
-                    # if state_name in state.keys(): state[state_name] = state[state_name] + 1;
-                    # else:
-                    #     state[state_name] = 1
-                    #     unq_state.add(state_name)
-                    if country_name in country: country[country_name] = country[country_name] + 1;
-                    else:
-                        country[country_name] = 1
-                        unq_country.add(country_name)
-                    # if country_name in country.keys(): country[country_name] = country[country_name] + 1;
-                    # else:
-                    #     country[country_name] = 1
-                    #     unq_country.add(country_name)
-                # avg_city[key] = len(t_city)
-                # avg_state[key] = len(t_state)
-            stats['avg_inv_country_per_patent'] = t_country/total_patents
+                    unq_country.add(country_name)
 
-            # stats['npatents_avgcity'] = avg_city
-            # stats['npatents_avgstate'] = avg_state
-            stats['npatents_avgcountry'] = avg_country
-            # stats['ninventors_city'] = city
-            # stats['ninventors_state'] = state
-            stats['ninventors_country'] = country
-            # stats['nunique_city'] = unq_city
-            # stats['nunique_state'] = set(filter(lambda x: x == x , unq_state))
+            stats['navg_inv_country_per_patent'] = t_country / total_patents
+
             unq_country = {x for x in unq_country if x == x}
-            print(unq_country)
+            stats['unique_countries'] = unq_country
             stats['nunique_country'] = len(unq_country)
-            print(len(unq_country))
-            clean_dict = {k: v for k, v in country.items() if not isnan(v)} # Does not Work
 
             max_records = teamsvecs['id'].shape[0]
-            city_mem = {}; state_mem = {}; country_mem = {}
+            country_mem = {}
             for i in tqdm(range(0, max_records)):
                 id = teamsvecs['id'][i].astype(int).toarray()[0][0].tolist()
                 loc = teams[f'{id}'].members_details[0:]
                 for loc_i in loc:
-                    # city_name, state_name, country_name = loc_i
                     _, _, country_name = loc_i
-                    # if city_name in city_mem.keys(): city_mem[city_name] = city_mem[city_name] + 1
-                    # else: city_mem[city_name] = 1
-                    # if state_name in state_mem.keys(): state_mem[state_name] = state_mem[state_name] + 1
-                    # else: state_mem[state_name] = 1
-                    if country_name in country_mem.keys(): country_mem[country_name] = country_mem[country_name] + 1
-                    else: country_mem[country_name] = 1
+                    if country_name in country_mem.keys():
+                        country_mem[country_name] = country_mem[country_name] + 1
+                    else:
+                        country_mem[country_name] = 1
 
             country_skill = {}
-            for idx, id_r in tqdm(enumerate(list(teams.keys()))):
-                for rec in teams[id_r].members_details:
+            for idx, idr in enumerate(teams.keys()):
+                for _, x in enumerate(teamsvecs['skill'][idx]):
+                    skills = len(x.data[0])
+                for rec in teams[idr].members_details:
                     _, _, country = rec
-                    if country in country_skill.keys():
-                        country_skill[country] = country_skill[country] + (teamsvecs['skill'][idx] != 0).sum(1)[0, 0]
+                    if country not in country_skill.keys():
+                        country_skill[country] = skills
                     else:
-                        country_skill[country] = (teamsvecs['skill'][idx] != 0).sum(1)[0, 0]
+                        country_skill[country] = country_skill[country] + skills
 
             stats['nskills_country-idx'] = country_skill
-            # stats['nmembers_city-idx'] = city_mem
-            # stats['nmembers_state-idx'] = state_mem
             stats['nmembers_country-idx'] = country_mem
-            print(stats)
-
-
-            with open(f'{output}/stats.pkl', 'wb') as outfile: pickle.dump(stats, outfile)
+            with open(f'{output}/stats.pkl', 'wb') as outfile:
+                pickle.dump(stats, outfile)
 
             print(f'Time Taken to do complete Stats and save as pickle file {(time() - t1) / 60} Minutes')
             if plot: Team.plot_stats(stats, output)

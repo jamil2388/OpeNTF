@@ -16,11 +16,10 @@ output = '../../main/data/preprocessed/imdb/title.basics.tsv'
 #     stats = Movie.get_stats(pickle.load(infile), output, plot=True)
 
 from cmn.patent import Patent
-from cmn.team import Team
 output = '../data/preprocessed/uspt/toy.patent.tsv'
-output = '../data/preprocessed/uspt/patent.tsv'
-with open(f'{output}/teams.pkl', 'rb') as infile1, open(f'{output}/teamsvecs.pkl', 'rb') as infile2:
-    stats = Patent.get_stats(pickle.load(infile1), pickle.load(infile2), output, plot=True)
+#output = '../data/preprocessed/uspt/patent.tsv'
+with open(f'{output}/teams.pkl', 'rb') as infile1, open(f'../data/preprocessed/uspt/toy.patent.tsv/teamsvecs.pkl', 'rb') as infile2:
+    stats = Patent.get_stats(pickle.load(infile1), pickle.load(infile2), output, plot=False)
 
 # with open(f'{output}/teamsvecs.pkl', 'rb') as infile:
 #     teamsvecs = pickle.load(infile)
@@ -66,4 +65,3 @@ with open(f'{output}/teams.pkl', 'rb') as infile1, open(f'{output}/teamsvecs.pkl
 #     #         axs[i].set_yticklabels([])
 #     #         axs[i].spy(skill_member[:, (j - 1) * 1000000 : j * 1000000], precision=2**i, markersize=1)
 #     #     pyplot.show()
-#
