@@ -118,6 +118,8 @@ For example:
 3) [``f0.test.pred.eval.mean.csv``](./output/toy.dblp.v12.json/fnn/t30.s11.e12.l[100].lr0.1.b4096.e2/f0.test.pred.eval.mean.csv) is the average of evaluation metrics of the trained model on [1,2,3,4] folds on all instance of the test set
 
 
+![image](https://user-images.githubusercontent.com/19558771/164643307-393e8d5c-795b-4ff4-8ea5-47be9f108ecd.png)
+
 TODO: Put result figures and explain them.
 
 ## 4. Acknowledgement:
