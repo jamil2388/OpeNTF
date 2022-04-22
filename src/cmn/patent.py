@@ -125,6 +125,7 @@ class Patent(Team):
 
     @classmethod
     def get_stats(cls, teams, teamsvecs, output, plot=False):
+        # Stats Method for USPT
         try:
             print("Loading the stats pickle ...")
             with open(f'{output}/stats123.pkl', 'rb') as infile:

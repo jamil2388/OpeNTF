@@ -288,6 +288,7 @@ class Team(object):
             ax.yaxis.get_label().set_size(12)
             fig.savefig(f'{output}/{k}.png', dpi=100, bbox_inches='tight')
             plt.show()
+            #Now Generating Graphs
             if 'sliced' in k:
                 plt.plot(v.keys(), v.values())
                 xtick = k.split('_')[1]
