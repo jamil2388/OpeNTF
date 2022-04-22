@@ -221,7 +221,7 @@ class Team(object):
     def get_stats(cls, teamsvecs, output, plot=False):
         try:
             print("Loading the stats pickle ...")
-            with open(f'{output}/stats.pkl', 'rb') as infile:
+            with open(f'{output}/stats123.pkl', 'rb') as infile:
                 stats = pickle.load(infile)
                 if plot: Team.plot_stats(stats, output)
                 return stats
@@ -253,12 +253,12 @@ class Team(object):
             nteams_nmembers = Counter(row_sums.A1.astype(int))
             stats['nteams_nmembers'] = {k: v for k, v in sorted(nteams_nmembers.items(), key=lambda item: item[1], reverse=True)}
             stats['nteams_candidate-idx'] = {k: v for k, v in enumerate(sorted(col_sums.A1.astype(int), reverse=True))}
-            stats['*avg_nmembers_team'] = row_sums.mean()
-            stats['*nteams_single_member'] = stats['nteams_nmembers'][1] if 1 in stats['nteams_nmembers'] else 0
-            #how many members have only 1 team, 2 teams, ....
-            nmembers_nteams = Counter(col_sums.A1.astype(int))
-            stats['nmembers_nteams'] = {k: v for k, v in sorted(nmembers_nteams.items(), key=lambda item: item[1], reverse=True)}
-            stats['*avg_nteams_member'] = col_sums.mean()
+            # stats['*avg_nmembers_team'] = row_sums.mean()
+            # stats['*nteams_single_member'] = stats['nteams_nmembers'][1] if 1 in stats['nteams_nmembers'] else 0
+            # #how many members have only 1 team, 2 teams, ....
+            # nmembers_nteams = Counter(col_sums.A1.astype(int))
+            # stats['nmembers_nteams'] = {k: v for k, v in sorted(nmembers_nteams.items(), key=lambda item: item[1], reverse=True)}
+            # stats['*avg_nteams_member'] = col_sums.mean()
 
             #TODO: temporal stats!
             #TODO: skills_years (2-D image)
@@ -288,6 +288,17 @@ class Team(object):
             ax.yaxis.get_label().set_size(12)
             fig.savefig(f'{output}/{k}.png', dpi=100, bbox_inches='tight')
             plt.show()
+            if 'sliced' in k:
+                plt.plot(v.keys(), v.values())
+                xtick = k.split('_')[1]
+                ytick = k.split('_')[2]
+                plt.xlabel(f'{xtick}')
+                plt.ylabel(f'{ytick}')
+                plt.title(f'{k}')
+                plt.show()
+
+
+
 
     @staticmethod
     def get_unigram(membervecs):
