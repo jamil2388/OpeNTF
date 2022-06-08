@@ -10,11 +10,12 @@ import multiprocessing
 from functools import partial
 
 class Team(object):
-    def __init__(self, id, members, skills, datetime):
+    def __init__(self, id, members, skills,  datetime, country=None):
         self.id = id
         self.datetime = datetime
         self.members = members
         self.skills = skills
+        self.country = country
 
     def get_one_hot(self, s2i, c2i):
         # Generating one hot encoded vector for skills of team
@@ -28,9 +29,56 @@ class Team(object):
         idnames = [f'{m.id}_{m.name}' for m in self.members]
         for idname in idnames:
             y[0, c2i[idname]] = 1
-        id = np.zeros((1,1))
-        id[0,0] = self.id
+        id = np.zeros((1, 1))
+        id[0, 0] = self.id
         return np.hstack([id, X, y])
+
+    @staticmethod
+    def build_index_location(teams):
+        mem2loc = dict(); loc2mem = dict(); sk_mem = dict(); mem2skill = dict(); ix_loc = dict(); loc_ix = dict()
+
+        for team, values in teams.items():
+            for candidate in teams[f'{team}'].members:
+                if loc2mem.get(candidate.locations[0][2]):
+                    loc_list = loc2mem.get(candidate.locations[0][2])
+                    loc_list.append(candidate.id)
+                    loc2mem.update({candidate.locations[0][2]: loc_list})
+                else:
+                    loc2mem[candidate.locations[0][2]] = [candidate.id]
+                mem2loc[candidate.id] = candidate.locations[0][2]
+            for candidate in teams[f'{team}'].members:
+                sk_mem[candidate.id] = values.skills
+        i = 0
+        for key, value in sk_mem.items():
+            value = str(value)
+            if value in mem2skill.keys():
+                i += 1
+                value = f'{value}_{i}'
+                mem2skill[value] = key
+            else:
+                mem2skill[value] = key
+
+        loc2skill = dict()
+        ix = 0
+        for k1 in loc2mem.keys():
+            loc_ix[k1] = ix
+            ix_loc[ix] = k1
+            ix += 1
+
+        ix = 0
+        sk_ix = dict(); ix_sk = dict()
+        for k1 in mem2skill.keys():
+            sk_ix[k1] = ix
+            ix_sk[ix] = k1
+            ix += 1
+
+        for k1, v1 in loc2mem.items():
+            for k2, v2 in mem2skill.items():
+                if v2 in v1:
+                    loc2skill[k2] = k1
+        print(loc2skill)
+        #Loc2skill has the respective format we wanted but not having B, L, E tokens
+        return loc2mem, mem2loc, sk_mem, mem2skill, loc2skill
 
     @staticmethod
     def build_index_candidates(teams):
@@ -74,12 +122,13 @@ class Team(object):
         indexes['i2c'], indexes['c2i'] = Team.build_index_candidates(teams.values())
         indexes['i2s'], indexes['s2i'] = Team.build_index_skills(teams.values())
         indexes['i2t'], indexes['t2i'] = Team.build_index_teams(teams.values())
+        indexes['loc2mem'], indexes['mem2loc'], indexes['sk_mem'], indexes['mem2skill'], indexes['loc2skill'] = Team.build_index_location(teams)
         st = time()
 
         try: os.makedirs(output)
         except FileExistsError as ex: pass
 
-        with open(f'{output}/teams.pkl', "wb") as outfile: pickle.dump(teams, outfile)
+        #with open(f'{output}/teams.pkl', "wb") as outfile: pickle.dump(teams, outfile)
         with open(f'{output}/indexes.pkl', "wb") as outfile: pickle.dump(indexes, outfile)
         print(f"It took {time() - st} seconds to pickle the data into {output}")
         return indexes, teams
@@ -87,7 +136,6 @@ class Team(object):
     @staticmethod
     def load_data(output, index):
         st = time()
-        print(f"Loading indexes pickle from {output}/indexes.pkl ...")
         with open(f'{output}/indexes.pkl', 'rb') as infile: indexes = pickle.load(infile)
         print(f"It took {time() - st} seconds to load from the pickles.")
         teams = None
@@ -99,7 +147,6 @@ class Team(object):
 
         return indexes, teams
 
-    @staticmethod
     def bucketing(bucket_size, s2i, c2i, teams):
         skill_vec_dim = len(s2i)
         candidate_vec_dim = len(c2i)
@@ -132,7 +179,8 @@ class Team(object):
         try:
             st = time()
             print(f"Loading sparse matrices from {pkl} ...")
-            with open(pkl, 'rb') as infile: vecs = pickle.load(infile)
+            with open(pkl, 'rb') as infile:
+                vecs = pickle.load(infile)
             indexes, _ = cls.read_data(datapath, output, index=True, filter=filter, settings=settings)
             print(f"It took {time() - st} seconds to load the sparse matrices.")
             return vecs, indexes
@@ -142,17 +190,19 @@ class Team(object):
             st = time()
             # parallel
             with multiprocessing.Pool() as p:
-                n_core = multiprocessing.cpu_count() if settings['ncore'] < 0 else settings['ncore']
+                n_core = multiprocessing.cpu_count() if settings['ncore'] <= 0 else settings['ncore']
                 subteams = np.array_split(list(teams.values()), n_core)
                 func = partial(Team.bucketing, settings['bucket_size'], indexes['s2i'], indexes['c2i'])
                 data = p.map(func, subteams)
             # serial
             # data = Team.bucketing(1000, s2i, c2i, teams.values())
-            data = scipy.sparse.vstack(data, 'lil')#{'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, By default an appropriate sparse matrix format is returned!!
-            vecs = {'id': data[:, 0], 'skill': data[:, 1:len(indexes['s2i']) + 1], 'member':data[:, - len(indexes['c2i']):]}
+            data = scipy.sparse.vstack(data, 'lil')  # {'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, By default an appropriate sparse matrix format is returned!!
+            vecs = {'id': data[:, 0], 'skill': data[:, 1:len(indexes['s2i']) + 1], 'member': data[:, - len(indexes['c2i']):]}
 
-            with open(pkl, 'wb') as outfile: pickle.dump(vecs, outfile)
-            print(f"It took {time() - st} seconds to generate and store the sparse matrices of size {data.shape} at {pkl}")
+            with open(pkl, 'wb') as outfile:
+                pickle.dump(vecs, outfile)
+            print(
+                f"It took {time() - st} seconds to generate and store the sparse matrices of size {data.shape} at {pkl}")
             return vecs, indexes
 
         except Exception as e:
@@ -171,7 +221,7 @@ class Team(object):
     def get_stats(cls, teamsvecs, output, plot=False):
         try:
             print("Loading the stats pickle ...")
-            with open(f'{output}/stats.pkl', 'rb') as infile:
+            with open(f'{output}/stats123.pkl', 'rb') as infile:
                 stats = pickle.load(infile)
                 if plot: Team.plot_stats(stats, output)
                 return stats
@@ -203,12 +253,12 @@ class Team(object):
             nteams_nmembers = Counter(row_sums.A1.astype(int))
             stats['nteams_nmembers'] = {k: v for k, v in sorted(nteams_nmembers.items(), key=lambda item: item[1], reverse=True)}
             stats['nteams_candidate-idx'] = {k: v for k, v in enumerate(sorted(col_sums.A1.astype(int), reverse=True))}
-            stats['*avg_nmembers_team'] = row_sums.mean()
-            stats['*nteams_single_member'] = stats['nteams_nmembers'][1] if 1 in stats['nteams_nmembers'] else 0
-            #how many members have only 1 team, 2 teams, ....
-            nmembers_nteams = Counter(col_sums.A1.astype(int))
-            stats['nmembers_nteams'] = {k: v for k, v in sorted(nmembers_nteams.items(), key=lambda item: item[1], reverse=True)}
-            stats['*avg_nteams_member'] = col_sums.mean()
+            # stats['*avg_nmembers_team'] = row_sums.mean()
+            # stats['*nteams_single_member'] = stats['nteams_nmembers'][1] if 1 in stats['nteams_nmembers'] else 0
+            # #how many members have only 1 team, 2 teams, ....
+            # nmembers_nteams = Counter(col_sums.A1.astype(int))
+            # stats['nmembers_nteams'] = {k: v for k, v in sorted(nmembers_nteams.items(), key=lambda item: item[1], reverse=True)}
+            # stats['*avg_nteams_member'] = col_sums.mean()
 
             #TODO: temporal stats!
             #TODO: skills_years (2-D image)
@@ -238,6 +288,18 @@ class Team(object):
             ax.yaxis.get_label().set_size(12)
             fig.savefig(f'{output}/{k}.png', dpi=100, bbox_inches='tight')
             plt.show()
+            #Now Generating Graphs
+            if 'sliced' in k:
+                plt.plot(v.keys(), v.values())
+                xtick = k.split('_')[1]
+                ytick = k.split('_')[2]
+                plt.xlabel(f'{xtick}')
+                plt.ylabel(f'{ytick}')
+                plt.title(f'{k}')
+                plt.show()
+
+
+
 
     @staticmethod
     def get_unigram(membervecs):

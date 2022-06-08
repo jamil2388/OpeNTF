@@ -14,14 +14,15 @@ You need to have ``Python >= 3.8`` and install the following main packages, amon
 ```
 torch==1.6.0
 pytre_eval==0.5
+gensim==3.8.3
 ```
-To clone the codebase and install the required packages by ``pip``:
+By ``pip``, clone the codebase and install the required packages:
 ```sh
 git clone https://github.com/Fani-Lab/neural_team_formation
 cd neural_team_formation
 pip install -r requirements.txt
 ```
-or by [``conda``](https://www.anaconda.com/products/individual):
+By [``conda``](https://www.anaconda.com/products/individual):
 
 ```sh
 git clone https://github.com/Fani-Lab/neural_team_formation
@@ -116,6 +117,8 @@ For example:
 2) [``f0.test.pred.eval.csv``](./output/toy.dblp.v12.json/fnn/t30.s11.e12.l[100].lr0.1.b4096.e2/f0.test.pred.eval.csv) is the evaluation metrics of the trained model on [1,2,3,4] folds on each instance of the test set
 3) [``f0.test.pred.eval.mean.csv``](./output/toy.dblp.v12.json/fnn/t30.s11.e12.l[100].lr0.1.b4096.e2/f0.test.pred.eval.mean.csv) is the average of evaluation metrics of the trained model on [1,2,3,4] folds on all instance of the test set
 
+
+![image](https://user-images.githubusercontent.com/19558771/164643307-393e8d5c-795b-4ff4-8ea5-47be9f108ecd.png)
 
 TODO: Put result figures and explain them.
 
