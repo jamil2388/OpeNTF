@@ -134,8 +134,9 @@ class Team(object):
         for idx, t in enumerate(teams):
             for loc in t.members_details:
                 # print(l2i[loc])
-                if loc not in l2i.keys():
-                    l2i[loc] = ix
+                #For just country change loc to loc[2]
+                if loc[2] not in l2i.keys():
+                    l2i[loc[2]] = ix
                     ix += 1
         col = list(l2i.values())[-1]
         row = len(teams)
@@ -144,8 +145,8 @@ class Team(object):
         for rx, t in enumerate(teams):
             print(t.members_details)
             for one in t.members_details:
-                if one in l2i.keys():
-                    x[rx, l2i[one]] = 1
+                if one[2] in l2i.keys():
+                    x[rx, l2i[one[2]]] = 1
         i2l = dict((v, k) for k, v in l2i.items())
         print('x for location is: ', x)
         return i2l, l2i, x
@@ -328,7 +329,7 @@ class Team(object):
     @classmethod
     def generate_sparse_vectors(cls, datapath, output, filter, settings):
         output += f'.filtered.mt{settings["filter"]["min_nteam"]}.ts{settings["filter"]["min_team_size"]}' if filter else ""
-        pkl = f'{output}/teamsvecs_v5.pkl'
+        pkl = f'{output}/teamsvecs_v6.pkl'
         try:
             st = time()
             print(f"Loading sparse matrices from {pkl} ...")
@@ -366,21 +367,7 @@ class Team(object):
             data = Team.bucketing_location(500, indexes['l2i'], c2i, hstack)
             location_vec_dim = len(indexes['l2i'])
             candidate_vec_dim = len(c2i)
-            # exit()
-            # print('This is right before bucketing')
-            # for team in teams.values():
-            #     # print(dir(team.members))
-            #     for candidate in team.members:
-            #         print(candidate.id)
-            #     print('Next Team')
-            #     # for t in team:
-            #     #     for candidate in team.members:
-            #     #         print(candidate)
-            #     #     break
-            # # for ix, team in teams.values():
-            # #     team.id)
-            # #     exit()
-            # exit()
+
             # data = Team.bucketing(1000, indexes['l2i'], indexes['i2l'], indexes['location_file'], teams.values())
             data = scipy.sparse.vstack(data, 'lil')#{'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, By default an appropriate sparse matrix format is returned!!
             # vecs = {'id': data[:, 0], 'skill': data[:, 1:len(indexes['s2i']) + 1], 'member':data[:, - len(indexes['c2i']):]}
