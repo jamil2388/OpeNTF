@@ -17,7 +17,7 @@ class Team(object):
         self.skills = skills
         self.country = country
 
-    def get_one_hot(self, s2i, c2i):
+    def get_one_hot(self, s2i, c2i, l2i):
         # Generating one hot encoded vector for skills of team
         skill_vec_dim = len(s2i)
         X = np.zeros((1, skill_vec_dim))
@@ -31,54 +31,33 @@ class Team(object):
             y[0, c2i[idname]] = 1
         id = np.zeros((1, 1))
         id[0, 0] = self.id
-        return np.hstack([id, X, y])
+
+        # Generating one hot encoded vector for locations of team
+        loc_vec_dim = len(l2i)
+        Z = np.zeros((1, loc_vec_dim))
+        for loc in self.members_details:
+            if loc[2] in l2i.keys(): # loc[2] represents country
+                Z[0, l2i[loc[2]]] = 1
+        return np.hstack([id, X, Z, y])
 
     @staticmethod
-    def build_index_location(teams):
-        mem2loc = dict(); loc2mem = dict(); sk_mem = dict(); mem2skill = dict(); ix_loc = dict(); loc_ix = dict()
-
-        for team, values in teams.items():
-            for candidate in teams[f'{team}'].members:
-                if loc2mem.get(candidate.locations[0][2]):
-                    loc_list = loc2mem.get(candidate.locations[0][2])
-                    loc_list.append(candidate.id)
-                    loc2mem.update({candidate.locations[0][2]: loc_list})
-                else:
-                    loc2mem[candidate.locations[0][2]] = [candidate.id]
-                mem2loc[candidate.id] = candidate.locations[0][2]
-            for candidate in teams[f'{team}'].members:
-                sk_mem[candidate.id] = values.skills
-        i = 0
-        for key, value in sk_mem.items():
-            value = str(value)
-            if value in mem2skill.keys():
-                i += 1
-                value = f'{value}_{i}'
-                mem2skill[value] = key
-            else:
-                mem2skill[value] = key
-
-        loc2skill = dict()
+    def build_index_country(teams):
+        print('Starting build index country')
+        l2i = {};
+        i2l = {};
         ix = 0
-        for k1 in loc2mem.keys():
-            loc_ix[k1] = ix
-            ix_loc[ix] = k1
-            ix += 1
+        for idx, t in enumerate(teams):
+            for loc in t.members_details:
+                # print(l2i[loc])
+                # For just country change loc to loc[2]
+                if loc[2] not in l2i.keys():
+                    l2i[loc[2]] = ix
+                    ix += 1
 
-        ix = 0
-        sk_ix = dict(); ix_sk = dict()
-        for k1 in mem2skill.keys():
-            sk_ix[k1] = ix
-            ix_sk[ix] = k1
-            ix += 1
-
-        for k1, v1 in loc2mem.items():
-            for k2, v2 in mem2skill.items():
-                if v2 in v1:
-                    loc2skill[k2] = k1
-        print(loc2skill)
-        #Loc2skill has the respective format we wanted but not having B, L, E tokens
-        return loc2mem, mem2loc, sk_mem, mem2skill, loc2skill
+        i2l = dict((v, k) for k, v in l2i.items())
+        # print('x for location is: ', x)
+        # print(type(x))
+        return i2l, l2i
 
     @staticmethod
     def build_index_candidates(teams):
@@ -122,13 +101,11 @@ class Team(object):
         indexes['i2c'], indexes['c2i'] = Team.build_index_candidates(teams.values())
         indexes['i2s'], indexes['s2i'] = Team.build_index_skills(teams.values())
         indexes['i2t'], indexes['t2i'] = Team.build_index_teams(teams.values())
-        indexes['loc2mem'], indexes['mem2loc'], indexes['sk_mem'], indexes['mem2skill'], indexes['loc2skill'] = Team.build_index_location(teams)
-        st = time()
-
+        indexes['i2l'], indexes['l2i'] = Team.build_index_country(teams.values())
         try: os.makedirs(output)
         except FileExistsError as ex: pass
 
-        #with open(f'{output}/teams.pkl', "wb") as outfile: pickle.dump(teams, outfile)
+        with open(f'{output}/teams.pkl', "wb") as outfile: pickle.dump(teams, outfile)
         with open(f'{output}/indexes.pkl', "wb") as outfile: pickle.dump(indexes, outfile)
         print(f"It took {time() - st} seconds to pickle the data into {output}")
         return indexes, teams
@@ -147,23 +124,25 @@ class Team(object):
 
         return indexes, teams
 
-    def bucketing(bucket_size, s2i, c2i, teams):
+    @staticmethod
+    def bucketing(bucket_size, s2i, c2i, l2i, teams):
         skill_vec_dim = len(s2i)
+        loc_vec_dim = len(l2i)
         candidate_vec_dim = len(c2i)
-        data = lil_matrix((len(teams), 1 + skill_vec_dim + candidate_vec_dim))
-        data_ = np.zeros((bucket_size, 1 + skill_vec_dim + candidate_vec_dim))
+        data = lil_matrix((len(teams), 1 + skill_vec_dim + loc_vec_dim + candidate_vec_dim))
+        data_ = np.zeros((bucket_size, 1 + skill_vec_dim + loc_vec_dim + candidate_vec_dim))
         j = -1
         st = time()
         for i, team in enumerate(teams):
             try:
                 j += 1
-                data_[j] = team.get_one_hot(s2i, c2i)
+                data_[j] = team.get_one_hot(s2i, c2i, l2i)
             except IndexError as ex:
                 s = int(((i / bucket_size) - 1) * bucket_size)
                 e = int(s + bucket_size)
                 data[s: e] = data_
                 j = 0
-                data_[j] = team.get_one_hot(s2i, c2i)
+                data_[j] = team.get_one_hot(s2i, c2i, l2i)
             except Exception as ex:
                 raise ex
 
@@ -192,17 +171,16 @@ class Team(object):
             with multiprocessing.Pool() as p:
                 n_core = multiprocessing.cpu_count() if settings['ncore'] <= 0 else settings['ncore']
                 subteams = np.array_split(list(teams.values()), n_core)
-                func = partial(Team.bucketing, settings['bucket_size'], indexes['s2i'], indexes['c2i'])
+                func = partial(Team.bucketing, settings['bucket_size'], indexes['s2i'], indexes['c2i'], indexes['l2i'])
                 data = p.map(func, subteams)
             # serial
-            # data = Team.bucketing(1000, s2i, c2i, teams.values())
+            # data = Team.bucketing(1000, indexes['s2i'], indexes['c2i'], indexes['l2i'], teams.values())
             data = scipy.sparse.vstack(data, 'lil')  # {'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, By default an appropriate sparse matrix format is returned!!
-            vecs = {'id': data[:, 0], 'skill': data[:, 1:len(indexes['s2i']) + 1], 'member': data[:, - len(indexes['c2i']):]}
+            vecs = {'id': data[:, 0], 'skill': data[:, 1:len(indexes['s2i']) + 1], 'loc': data[:, len(indexes['s2i']) + 1: len(indexes['s2i']) + 1 + len(indexes['l2i'])], 'member': data[:, - len(indexes['c2i']):]}
 
             with open(pkl, 'wb') as outfile:
                 pickle.dump(vecs, outfile)
-            print(
-                f"It took {time() - st} seconds to generate and store the sparse matrices of size {data.shape} at {pkl}")
+            print(f"It took {time() - st} seconds to generate and store the sparse matrices of size {data.shape} at {pkl}")
             return vecs, indexes
 
         except Exception as e:

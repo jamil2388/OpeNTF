@@ -11,11 +11,11 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
 import pandas as pd
 import pickle
 
-import param #do not remove this
-from cmn.team import Team
-from mdl.fnn import FNN
-from mdl.custom_dataset import TFDataset
-from eval.metric import *
+from src import param #do not remove this
+from src.cmn.team import Team
+from src.mdl.fnn import FNN
+from src.mdl.custom_dataset import TFDataset
+from src.eval.metric import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

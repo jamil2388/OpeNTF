@@ -9,9 +9,11 @@ import numpy as np
 import json
 from json import JSONEncoder
 from sklearn.model_selection import KFold, train_test_split
+from multiprocessing import freeze_support
 settings = param.settings
 
 datapath = '../../data/raw/uspt/toy.patent.tsv'
+# datapath = '../../data/raw/uspt/patent.tsv'
 filter = False
 
 
@@ -27,6 +29,7 @@ def create_evaluation_splits(n_sample, n_folds, train_ratio=0.85, output='./'):
     splits = dict()
     splits['test'] = test
     splits['folds'] = dict()
+
     skf = KFold(n_splits=n_folds, random_state=0, shuffle=True)
     for k, (trainIdx, validIdx) in enumerate(skf.split(train)):
         splits['folds'][k] = dict()
@@ -43,17 +46,24 @@ print(prep_output)
 output = f'../../output/'
 # exit()
 import os
-# print(os.listdir('../../data/preprocessed/'))
-# print(os.listdir(f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}'))
-# print(f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}')
-# print(f'{os.path.split(datapath)[-1]}')
-vecs, indexes = Patent.generate_sparse_vectors(datapath, f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}', filter, settings['data'])
-print(vecs)
-print('Reached. Starting fnn')
-splits = create_evaluation_splits(len(indexes['t2i']), 3, 0.85, output=prep_output)
-print(splits)
-fnn_main.main(splits, vecs, indexes, f'{output}{os.path.split(datapath)[-1]}test/fnn', settings['model']['baseline']['fnn'], settings['model']['cmd'])
+
+if __name__ == '__main__':
+    freeze_support()
+    # print(os.listdir('../../data/preprocessed/'))
+    # print(os.listdir(f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}'))
+    # print(f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}')
+    # print(f'{os.path.split(datapath)[-1]}')
+    vecs, indexes = Patent.generate_sparse_vectors(datapath, f'../../data/preprocessed/uspt/{os.path.split(datapath)[-1]}', filter, settings['data'])
+    del vecs['skill']
+    vecs['skill'] = vecs['loc']
+    del vecs['loc']
+    # print(vecs)
+    # exit()
+    print('Reached. Starting fnn')
+    splits = create_evaluation_splits(len(indexes['t2i']), 3, 0.85, output=prep_output)
+    print(splits)
+    fnn_main.main(splits, vecs, indexes, f'{output}{os.path.split(datapath)[-1]}test/fnn', settings['model']['baseline']['fnn'], settings['model']['cmd'])
 
 
-# T1 = Team()
-# print()
+    # T1 = Team()
+    # print()

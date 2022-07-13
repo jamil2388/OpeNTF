@@ -6,8 +6,8 @@ import multiprocessing
 from math import isnan
 import itertools
 
-from cmn.team import Team
-from cmn.inventor import Inventor
+from src.cmn.team import Team
+from src.cmn.inventor import Inventor
 
 import pickle
 
@@ -30,13 +30,7 @@ class Patent(Team):
     def read_data(datapath, output, index, filter, settings):
         st = time()
         try:
-            # return super(Patent, Patent).load_data(output, index)
-            # print('Going into Load Data')
-            # print('Here in patent read data')
-            with open(f'{output}/teams_1234.pkl', 'rb') as tfile:
-                teams = pickle.load(tfile)
-            # #return super(Patent, Patent).load_data(output, index)
-            # return super(Patent, Patent).read_data(teams, output, filter, settings)
+            return super(Patent, Patent).load_data(output, index)
         except (FileNotFoundError, EOFError) as e:
             print(f"Pickles not found! Reading raw data from {datapath} ...")
             print('patent read data except')
