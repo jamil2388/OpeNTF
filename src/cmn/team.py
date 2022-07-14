@@ -97,6 +97,7 @@ class Team(object):
         # apply filtering
         if filter: teams = Team.remove_outliers(teams, settings)
         # build indexes
+        st = time()
         indexes = {}
         indexes['i2c'], indexes['c2i'] = Team.build_index_candidates(teams.values())
         indexes['i2s'], indexes['s2i'] = Team.build_index_skills(teams.values())

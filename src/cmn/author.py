@@ -1,4 +1,4 @@
-from src.cmn.member import Member
+from cmn.member import Member
 
 class Author(Member):
     def __init__(self, id, name, org):

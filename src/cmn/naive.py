@@ -1,7 +1,7 @@
 # from src.cmn.team import Team
 import os
 from patent import Patent
-from src import param
+# from src import param
 #from src.cmn.team_test import Team
 from src import fnn_main
 # import src.main

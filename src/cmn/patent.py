@@ -6,8 +6,8 @@ import multiprocessing
 from math import isnan
 import itertools
 
-from src.cmn.team import Team
-from src.cmn.inventor import Inventor
+from cmn.team import Team
+from cmn.inventor import Inventor
 
 import pickle
 
