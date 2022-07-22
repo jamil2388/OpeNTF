@@ -1,24 +1,24 @@
-fl:j_ln:lynch-38_Jay_Lynch [('Arvada', 'CO', 'US')]
-fl:a_ln:braunberger-1_Alfred S._Braunberger [('Sequim', 'WA', 'US')]
-fl:b_ln:braunberger-2_Beau M._Braunberger [('Upland', 'CA', 'US')]
-fl:a_ln:sessa-1_Anthony J._Sessa [('Quogue', 'NY', 'US')]
-fl:j_ln:albertson-4_Jacob_Albertson [('Newton', 'MA', 'US')]
-fl:k_ln:arnold-2_Kenneth C. R. C._Arnold [('Ellicott City', 'MD', 'US')]
-fl:m_ln:paolini-3_Michael A._Paolini [('Austin', 'TX', 'US')]
-fl:s_ln:goldman-15_Steven D._Goldman [('County of Chesterfield', 'MO', 'US')]
-fl:r_ln:williams-203_Richard C._Williams [('Saratoga', 'CA', 'US')]
-fl:m_ln:culbert-1_Michael_Culbert [('Monte Sereno', 'CA', 'US')]
-fl:k_ln:cox-31_Keith_Cox [('Sunnyvale', 'CA', 'US')]
-fl:j_ln:de cesare-2_Josh P._de Cesare [('Campbell', 'CA', 'US')]
-fl:d_ln:radcliffe-4_David_Radcliffe [('Hood River', 'OR', 'US')]
-fl:d_ln:huang-8_Daisie Iris_Huang [('Oakland`', 'CA', 'US')]
-fl:d_ln:falkenburg-1_Dave Robbins_Falkenburg [('San Jose Almadeu', 'CA', 'US')]
-fl:b_ln:howard-16_Brian D._Howard [('Portola Valley', 'CA', 'US')]
-fl:g_ln:freeman-9_Gary A._Freeman [('Waltham', 'MA', 'US')]
-fl:j_ln:brewer-17_James E._Brewer [('Lino Lakes', 'MN', 'US')]
-fl:b_ln:gade-3_Bhargavaram B._Gade [('Irving', 'TX', 'US')]
-fl:m_ln:petach-2_Matthew Nicholas_Petach [('San Jose', 'CA', 'US')]
-fl:s_ln:prathaban-3_Selvaraj Rameshwara_Prathaban [('Coimbastore', nan, 'IN')]
-fl:j_ln:albus-3_James S._Albus [('Kensington', 'MD', 'US')]
-4o6g2rskzeyvnezyqwpxamwdz_Joannes G._van den Hanenberg [('PT Eindhoven', nan, 'NL')]
-nn9x8usd2khsn0yk36c3g0vzm_Frederikus J._de Munnik [('PT Eindhoven', nan, 'NL')]
+0 0
+1 0
+2 0
+3 0
+4 0
+5 0
+6 0
+7 0
+8 0
+9 0
+10 0
+11 0
+12 0
+13 0
+14 0
+15 0
+16 0
+17 0
+18 0
+19 0
+20 1
+21 0
+22 2
+23 2
