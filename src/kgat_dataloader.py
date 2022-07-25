@@ -13,20 +13,25 @@ class DataLoader:
         with open(indexes_file, 'rb') as infile: self.indexes = pickle.load(infile)
         self.train_dict = {}
         self.generate_data()
-        self.write_data()
-        self.split_data()
+        # self.write_data()
+        # self.split_data()
         # self.print_info()
 
     def generate_data(self):
+        # print(self.teamsvecs)
+        del self.teamsvecs['skill']
+        self.teamsvecs['skill'] = self.teamsvecs['loc']
+        del self.teamsvecs['loc']
+        # print(self.teamsvecs)
         for team in self.teams.values():
             mem_list = []
             loc_list = []
             for candidate in team.members:
                 idname = f'{candidate.id}_{candidate.name}'
-                print('idname:', idname, 'index of member:', self.indexes['c2i'][idname])
+                # print('idname:', idname, 'index of member:', self.indexes['c2i'][idname])
                 mem_list.append(self.indexes['c2i'][idname])
             for loc in team.members_details:
-                print('Country ', loc[2], 'index of location:', self.indexes['l2i'][loc[2]])
+                # print('Country ', loc[2], 'index of location:', self.indexes['l2i'][loc[2]])
                 loc_list.append(self.indexes['l2i'][loc[2]])
             self.train_dict.update({mem_list[i]: loc_list[i] for i in range(len(mem_list))})
         print(self.train_dict)
