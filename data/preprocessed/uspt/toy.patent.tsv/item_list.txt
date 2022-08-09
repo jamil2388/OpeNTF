@@ -1,0 +1,4 @@
+org_id remap_id freebase_id
+0 0 0
+1 1 1
+2 2 2
