@@ -47,6 +47,11 @@ def run(datapath, domain, filter, model, output, settings):
 
     if domain == 'uspt':
         vecs, indexes = Patent.generate_sparse_vectors(datapath, prep_output, filter, settings['data'])
+        print(vecs)
+        del vecs['skill']
+        vecs['skill'] = vecs['loc']
+        del vecs['loc']
+        print(vecs)
 
     splits = create_evaluation_splits(len(indexes['t2i']), settings['model']['nfolds'], settings['model']['train_test_split'], output=prep_output)
 

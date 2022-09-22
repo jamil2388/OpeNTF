@@ -40,8 +40,8 @@ settings = {
             'imdb':{},
         },
         'filter': {
-            'min_nteam': 0,
-            'min_team_size': 0,
+            'min_nteam': 5,
+            'min_team_size': 3,
         },
         'ncore': 0,# <= 0 for all
         'bucket_size': 500
