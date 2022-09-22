@@ -14,8 +14,9 @@ class DataLoader:
         self.train_dict = {}; self.test_dict = {}
         self.save_dict = {}
         self.data_df = pd.DataFrame()
-        self.generate_data()
-        DataLoader.create_kg()
+        # self.generate_data()
+        DataLoader.create_misc()
+        # DataLoader.create_kg()
         # DataLoader.print_info()
 
     def generate_data(self):
@@ -54,7 +55,7 @@ class DataLoader:
                 for item in value:
                     # print(item)
                     self.save_dict[key] = self.save_dict[key] + str(item) + ' '
-            # self.write_data()
+            self.write_data()
             self.split_data()
 
     def write_data(self):
@@ -103,13 +104,50 @@ class DataLoader:
                     # exit()
                     kg_df = pd.concat([kg_df, df])
                     # print(kg_df)
-            kg_df.to_csv('../data/preprocessed/uspt/toy.patent.tsv/kg_df.txt', header=None, index=None, sep=' ', mode='a')
+            kg_df.to_csv('../data/preprocessed/uspt/toy.patent.tsv/kg_final.txt', header=None, index=None, sep=' ', mode='a')
             print(kg_df)
 
+    @staticmethod
+    def create_misc():
+        user_list = pd.DataFrame(columns=['org_id', 'remap_id'])
+        with open("../data/preprocessed/uspt/toy.patent.tsv/data.txt", 'r') as f:
+            lines = f.readlines()
+            user_set = []
+            for ix, l in enumerate(lines):
+                x = l.split(' ')
+                id = x[0]
+                if id not in user_set:
+                    user_set.append(id)
+                # df = pd.DataFrame(columns=['org_id', 'remap_id'])
+                    user_list.loc[ix] = [id, id]
+        user_list.to_csv('../data/preprocessed/uspt/toy.patent.tsv/user_list.txt', index=None, sep=' ', mode='w')
+
+        item_list = pd.DataFrame(columns=['org_id', 'remap_id', 'freebase_id'])
+        entity_list = pd.DataFrame(columns=['org_id', 'remap_id'])
+        item_set = []
+        with open("../data/preprocessed/uspt/toy.patent.tsv/data.txt", 'r') as f:
+            lines = f.readlines()
+            for ix, l in enumerate(lines):
+                x = l.split(' ')
+                for item in x[1:-1]:
+                    if item not in item_set:
+                        item_list.loc[ix] = [item, item, item]
+                        item_set.append(item)
+        item_list.reset_index(inplace=True, drop=True)
+        item_list.to_csv('../data/preprocessed/uspt/toy.patent.tsv/item_list.txt', index=None, sep=' ', mode='w')
+
+        entity_list['org_id'] = item_list['freebase_id']
+        entity_list['remap_id'] = item_list['remap_id']
+        entity_list.to_csv('../data/preprocessed/uspt/toy.patent.tsv/entity_list.txt', index=None, sep=' ', mode='w')
+
+        relation_list = pd.DataFrame(columns=['org_id', 'remap_id'])
+        relation_list.loc[0] = ['BelongsFrom', 0]
+
+        relation_list.to_csv('../data/preprocessed/uspt/toy.patent.tsv/relation_list.txt', index=None, sep=' ', mode='w')
 
     @staticmethod
     def print_info():
-        with open("../data/preprocessed/uspt/toy.patent.tsv/data_new.txt", 'r') as f:
+        with open("../data/preprocessed/uspt/toy.patent.tsv/data.txt", 'r') as f:
             nice = []
             lines = f.readlines()
             # print('Here')
