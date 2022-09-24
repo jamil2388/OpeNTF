@@ -1,29 +1,26 @@
-import json
-from tqdm import  tqdm
-import traceback
-import pickle
+import json, os
+from tqdm import tqdm
 from time import time
-import os
 
-
-import numpy as np
 from cmn.author import Author
 from cmn.team import Team
 
 class Publication(Team):
     def __init__(self, id, authors, title, datetime, doc_type, venue, references, fos, keywords):
-        super().__init__(id, authors, None, datetime)
+        super().__init__(id, authors, None, datetime, venue)
         self.title = title
         self.doc_type = doc_type
-        self.venue = venue
+        self.location = venue #e.g., {'raw': 'international conference on human-computer interaction', 'id': 1127419992, 'type': 'c'}
         self.references = references
-        self.fos = fos
+        self.fos = fos #field of study
         self.keywords = keywords
         self.skills = self.set_skills()
 
         for author in self.members:
             author.teams.add(self.id)
             author.skills.update(set(self.skills))
+        self.members_locations = [(venue['id'], venue['id'], venue['id'])] * len(self.members)
+
 
     # Fill the fields attribute with non-zero weight from FOS
     def set_skills(self):
@@ -81,6 +78,7 @@ class Publication(Team):
                             members.append(candidates[idname])
                         team = Publication(id, members, title, year, type, venue, references, fos, keywords)
                         teams[team.id] = team
+                        if 'nrow' in settings['domain']['dblp'].keys() and len(teams) > settings['domain']['dblp']['nrow']: break
                     except json.JSONDecodeError as e:  # ideally should happen only for the last line ']'
                         print(f'JSONDecodeError: There has been error in loading json line `{line}`!\n{e}')
                         continue
