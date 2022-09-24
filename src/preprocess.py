@@ -24,6 +24,9 @@ with open(teams_pkl, 'rb') as tb:
 with open(indexes_pkl, 'rb') as tb:
     indexes = pickle.load(tb)
 
+with open(teamsvecs_pkl, 'rb') as tb:
+    teamsvecs = pickle.load(tb)
+
 
 all_words_og = [list(teams.values())]
 all_words = [val for sublist in all_words_og for val in sublist]
@@ -99,7 +102,11 @@ def get_train_adj_matrix(train_rating):
 
 A_indexs, A_values = get_train_adj_matrix(traindata)
 
+dummy_array = teamsvecs['skill'].toarray()
 
+print('teamsvecs', teamsvecs['skill'].toarray()[0])
+# print('indexes for s2i:', indexes['s2i'])
+# print('indexes for i2s:', indexes['i2s'])
 
 np.save("../data/preprocessed/uspt/toy.patent.tsv/A_indexs.npy", A_indexs)
 np.save("../data/preprocessed/uspt/toy.patent.tsv/A_values.npy", A_values)
