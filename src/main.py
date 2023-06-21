@@ -1,10 +1,12 @@
+import pickle
 import sys,os, json
 import argparse
 import numpy as np
 import pandas as pd
+import tqdm
 from sklearn.model_selection import KFold, train_test_split
 from itertools import product
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, vstack, csr_matrix, hstack
 import scipy.sparse
 import param
 from cmn.tools import NumpyArrayEncoder
@@ -18,6 +20,10 @@ from mdl.nmt import Nmt
 from mdl.tnmt import tNmt
 from mdl.tntf import tNtf
 from mdl.team2vec import Team2Vec
+import torch
+import datacheck
+import metapath2vec
+import train_node_emb
 
 def create_evaluation_splits(n_sample, n_folds, train_ratio=0.85, year_idx=None, output='./', step_ahead=1):   
     if year_idx:
@@ -83,6 +89,10 @@ def run(data_list, domain_list, filter, model_list, output, settings):
     if 'bnn' in model_list: models['bnn'] = Bnn()
     if 'fnn_emb' in model_list: models['fnn_emb'] = Fnn()
     if 'bnn_emb' in model_list: models['bnn_emb'] = Bnn()
+    if 'bnn_emb_gnn' in model_list: models['bnn_emb_gnn'] = Bnn()
+    if 'bnn_emb_gnn_loc' in model_list: models['bnn_emb_gnn_loc'] = Bnn()
+    if 'bnn_emb_gnn_loc_meta' in model_list: models['bnn_emb_gnn_loc_meta'] = Bnn()
+    if 'bnn_emb_gnn_meta' in model_list: models['bnn_emb_gnn_meta'] = Bnn()
     if 'nmt' in model_list: models['nmt'] = Nmt()
 
     #temporal baselines
@@ -107,17 +117,31 @@ def run(data_list, domain_list, filter, model_list, output, settings):
         datapath = data_list[domain_list.index(d_name)]
         prep_output = f'./../data/preprocessed/{d_name}/{os.path.split(datapath)[-1]}'
         vecs, indexes = d_cls.generate_sparse_vectors(datapath, f'{prep_output}{filter_str}', filter, settings['data'])
-        year_idx = []
-        for i in range(1, len(indexes['i2y'])):
-            if indexes['i2y'][i][0] - indexes['i2y'][i-1][0] > settings['model']['nfolds']:
-                year_idx.append(indexes['i2y'][i-1])
-        year_idx.append(indexes['i2y'][-1])
-        indexes['i2y'] = year_idx
+        gnn_path = train_node_emb.generate_emb()
+        mem_to_sk, mem_to_loc = datacheck.edge_generation(vecs)
+        expert_nodes, skill_nodes, loc_nodes, df_edgelist = datacheck.preprocess(mem_to_sk, mem_to_loc)
+        str_walks, graph_obj = metapath2vec.generate_walks(expert_nodes, skill_nodes, loc_nodes, df_edgelist)
+        meta_file = metapath2vec.generate_metapaths(str_walks, graph_obj)
+        emb_dict, emb_dict_meta = datacheck.emb_process(emb_file, meta_file)
+
         splits = create_evaluation_splits(vecs['id'].shape[0], settings['model']['nfolds'], settings['model']['train_test_split'], indexes['i2y'] if temporal else None, output=f'{prep_output}{filter_str}', step_ahead=settings['model']['step_ahead'])
 
         for (m_name, m_obj) in models.items():
             vecs_ = vecs.copy()
-            if m_name.find('_emb') > 0:
+            if m_name.find('_emb_gnn_loc_meta') > 0:
+                print(emb_dict_meta['loc'].shape)
+                print(emb_dict_meta['skill'].shape)
+                vecs_['skill'] = hstack([emb_dict_meta['loc'], emb_dict_meta['skill']]).tolil()
+            elif m_name.find('_emb_gnn_meta') > 0:
+                print(emb_dict_meta['skill'].shape)
+                vecs_['skill'] = emb_dict_meta['skill']
+            elif m_name.find('_emb_gnn_loc') > 0:
+                print(emb_dict['loc'].shape)
+                print(emb_dict['skill'].shape)
+                vecs_['skill'] = hstack([emb_dict['loc'], emb_dict['skill']]).tolil()
+            elif m_name.find('_emb_gnn') > 0:
+                vecs_['skill'] = emb_dict['skill']
+            elif m_name.find('_emb') > 0:
                 t2v = Team2Vec(vecs, indexes, 'dt2v' if m_name.find('_dt2v') > 0 else 'skill', f'./../data/preprocessed/{d_name}/{os.path.split(datapath)[-1]}{filter_str}')
                 emb_setting = settings['model']['baseline']['emb']
                 t2v.train(emb_setting['d'], emb_setting['w'], emb_setting['dm'], emb_setting['e'])
@@ -125,8 +149,10 @@ def run(data_list, domain_list, filter, model_list, output, settings):
 
             if m_name.endswith('a1'): vecs_['skill'] = lil_matrix(scipy.sparse.hstack((vecs_['skill'], lil_matrix(np.ones((vecs_['skill'].shape[0], 1))))))
 
-            baseline_name = m_name.lstrip('t').replace('_emb', '').replace('_dt2v', '').replace('_a1', '')
+            baseline_name = m_name.lstrip('t').replace('_emb', '').replace('_dt2v', '').replace('_a1', '').replace('_gnn', '').replace('_loc', '').replace('_meta','')
             print(f'Running for (dataset, model): ({d_name}, {m_name}) ... ')
+
+
             m_obj.run(splits, vecs_, indexes, f'{output}{os.path.split(datapath)[-1]}{filter_str}/{m_name}', settings['model']['baseline'][baseline_name], settings['model']['cmd'])
     if 'agg' in settings['model']['cmd']: aggregate(output)
 
