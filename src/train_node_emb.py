@@ -15,7 +15,7 @@ if config.MINIBATCH == "GraphSaint": from torch_geometric.data import GraphSAINT
 from torch_geometric.utils import negative_sampling 
 
 # Global Variables
-log_f = open(str(config.DATASET_DIR / "node_emb.log"), "w")
+log_f = open(str(config.DATASET_DIR + "/node_emb.log"), "w")
 all_data = None 
 device = None
 best_val_acc = -1
@@ -104,7 +104,7 @@ def train(epoch, model, optimizer):
     # Save best model and parameters
     if best_val_acc <= np.mean(acc_val) + eps:
         best_val_acc = np.mean(acc_val)
-        with open(str(config.DATASET_DIR / "best_model.pth"), 'wb') as f:
+        with open(str(config.DATASET_DIR + "/best_model.pth"), 'wb') as f:
             torch.save(model.state_dict(), f)
         best_hyperparameters = curr_hyperparameters
         best_model = model
@@ -116,7 +116,7 @@ def test(model):
 
     global all_data, best_embeddings, best_hyperparameters, all_losses
 
-    model.load_state_dict(torch.load(str(config.DATASET_DIR / "best_model.pth")))
+    model.load_state_dict(torch.load(str(config.DATASET_DIR + "/best_model.pth")))
     model.to(device)
     model.eval()
 
@@ -143,7 +143,7 @@ def generate_emb():
 
     global all_data, best_embeddings, best_model, all_hyperparameters, curr_hyperparameters, best_hyperparameters, all_losses, device
 
-    all_data = preprocess.read_graphs(str(config.DATASET_DIR / "df_edge_list.txt"))
+    all_data = preprocess.read_graphs(str(config.DATASET_DIR + "/df_edge_list_without_header.txt"))
 
     # Iterate through hyperparameter type (shuffled)
     shuffled_param_type = random.sample(all_hyperparameters.keys(), len(all_hyperparameters.keys()))
@@ -182,9 +182,9 @@ def generate_emb():
     best_model = best_model.to(device)
     best_embeddings = utils.get_embeddings(best_model, all_data, device)
 
-    # Save best embeddings
-    torch.save(best_embeddings, config.DATASET_DIR / (config.CONV.lower() + "_embeddings.pth"))
+    save_path = f"{config.DATASET_DIR + ('/' + config.CONV.lower() + '_embeddings.pth')}"
 
-    save_path = f"{config.DATASET_DIR / (config.CONV.lower() + '_embeddings.pth')}"
+    # Save best embeddings
+    torch.save(best_embeddings, save_path)
 
     return save_path

@@ -1,18 +1,18 @@
 import torch
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.sparse import lil_matrix, vstack, csr_matrix, hstack
 import pickle
 import random
 from tqdm import tqdm
-
+import config_prepare_dataset as cf
 
 def preprocess(sk_to_ex, ex_to_loc):
     print('Starting to Preprocess')
-    ex_to_loc = pd.read_csv(ex_to_loc, header=None, names=['ex_id', 'loc_id'])
-    # ex_to_loc.rename(columns={'ex': 'ex_id', 'syn_loc': 'syn_loc'}, inplace=True)
-    sk_to_ex = pd.read_csv(sk_to_ex, header=None, names=['ex_id', 'sk_id'])
+    sk_to_ex.rename(columns={0: 'ex_id', 1: 'sk_id'}, inplace=True)
+    ex_to_loc.rename(columns={0: 'ex_id', 1: 'loc_id'}, inplace=True)
 
     mapping_ex = dict();
     mapping_sk = dict();
@@ -111,7 +111,8 @@ def preprocess(sk_to_ex, ex_to_loc):
 
     df_edgelist = pd.DataFrame({'source': fl, 'target': sl})
 
-    df_edgelist.to_csv('df_edge_list.txt', sep=' ', header=True, index=False)
+    df_edgelist.to_csv(cf.DATASET_DIR+'/df_edge_list.txt', sep=' ', header=True, index=False)
+    df_edgelist.to_csv(cf.DATASET_DIR + '/df_edge_list_without_header.txt', sep=' ', header=False, index=False)
 
     return expert_nodes, skill_nodes, loc_nodes, df_edgelist
 
@@ -144,7 +145,7 @@ def edge_generation(vecs):
     return mem_to_sk, mem_to_loc
 
 
-def emb_process(gnn_path, meta_file):
+def emb_process(gnn_path, meta_file, vecs):
     emb_file = torch.load(gnn_path)
     # with open('metapaths_emb.pkl', 'rb') as file:
     #     meta_file = pickle.load(file)
@@ -165,7 +166,7 @@ def emb_process(gnn_path, meta_file):
     else:
         print('Processing for Skill Meta')
         emb_meta_s = {}
-        for i in tqdm.tqdm(range(vecs['skill'].shape[0])):
+        for i in tqdm(range(vecs['skill'].shape[0])):
             x = skill_emb_meta[[list(vecs['skill'][i].nonzero()[1])]]
             x = csr_matrix(x.mean(axis=1, dtype=float))
 
@@ -192,7 +193,7 @@ def emb_process(gnn_path, meta_file):
     else:
         print('Processing for Skill GNN')
         emb_s = {}
-        for i in tqdm.tqdm(range(vecs['skill'].shape[0])):
+        for i in tqdm(range(vecs['skill'].shape[0])):
             g = skill_emb.numpy()[[list(vecs['skill'][i].nonzero()[1])]]
             g = csr_matrix(g.mean(axis=1, dtype=float))
 
@@ -207,7 +208,7 @@ def emb_process(gnn_path, meta_file):
 
         print('Processing for Loc GNN')
         emb_l = {}
-        for i in tqdm.tqdm(range(vecs['loc'].shape[0])):
+        for i in tqdm(range(vecs['loc'].shape[0])):
             j = loc_emb.numpy()[[list(vecs['loc'][i].nonzero()[1])]]
 
             j = csr_matrix(j.mean(axis=1, dtype=float))

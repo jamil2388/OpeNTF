@@ -1,80 +1,3 @@
-# import os.path as osp
-#
-# import torch
-#
-# from torch_geometric.datasets import AMiner
-# from torch_geometric.nn import MetaPath2Vec
-#
-# # path = osp.join(osp.dirname(osp.realpath(__file__)), '../../data/AMiner')
-# # dataset = AMiner(path)
-# # data = dataset[0]
-#
-# data = torch.load('new_graph.pt')
-#
-# print(data)
-#
-#
-# metapath = [
-#     ('experts', 'location', 'experts'),
-#     ('skills', 'experts', 'skills'),
-#     ('experts', 'skills', 'experts'),
-#     ('location', 'experts', 'location'),
-# ]
-#
-# device = 'cpu'
-# model = MetaPath2Vec(data.edge_index_dict, embedding_dim=128,
-#                      metapath=metapath, walk_length=3, context_size=2,
-#                      walks_per_node=3, num_negative_samples=5,
-#                      sparse=True).to(device)
-#
-# loader = model.loader(batch_size=128, shuffle=True, num_workers=6)
-# optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=0.01)
-#
-#
-# def train(epoch, log_steps=100, eval_steps=2000):
-#     model.train()
-#     total_loss = 0
-#     for i, (pos_rw, neg_rw) in enumerate(loader):
-#         optimizer.zero_grad()
-#         loss = model.loss(pos_rw.to(device), neg_rw.to(device))
-#         loss.backward()
-#         optimizer.step()
-#
-#         total_loss += loss.item()
-#         if (i + 1) % log_steps == 0:
-#             print((f'Epoch: {epoch}, Step: {i + 1:05d}/{len(loader)}, '
-#                    f'Loss: {total_loss / log_steps:.4f}'))
-#             total_loss = 0
-#
-#         if (i + 1) % eval_steps == 0:
-#             acc = test()
-#             print((f'Epoch: {epoch}, Step: {i + 1:05d}/{len(loader)}, '
-#                    f'Acc: {acc:.4f}'))
-#
-#
-# @torch.no_grad()
-# def test(train_ratio=0.1):
-#     model.eval()
-#
-#     z = model('author', batch=data['author'].y_index.to(device))
-#     y = data['author'].y
-#
-#     perm = torch.randperm(z.size(0))
-#     train_perm = perm[:int(z.size(0) * train_ratio)]
-#     test_perm = perm[int(z.size(0) * train_ratio):]
-#
-#     return model.test(z[train_perm], y[train_perm], z[test_perm], y[test_perm],
-#                       max_iter=150)
-#
-#
-# for epoch in range(1, 6):
-#     train(epoch)
-#
-#     acc = test()
-#     print(f'Epoch: {epoch}, Accuracy: {acc:.4f}')
-## Random Effort Code above
-
-
 from stellargraph.data import UniformRandomMetaPathWalk
 import pandas as pd
 import numpy as np
@@ -162,9 +85,14 @@ def find_missing_nodes(lst):
     return missing_numbers
 
 def generate_walks(sk_nodes, ex_nodes, loc_nodes, df_edge_list):
+    start_time = time.time()
     sk_nodes.rename(columns={'col1': 'sk_id'}, inplace=True)
     ex_nodes.rename(columns={'col1': 'ex_id'}, inplace=True)
     loc_nodes.rename(columns={'col1': 'loc_id'}, inplace=True)
+
+    ex_nodes_unique = pd.DataFrame(index=ex_nodes['ex_id'].unique())
+    sk_nodes_unique = pd.DataFrame(index=sk_nodes['sk_id'].unique())
+    loc_nodes_unique = pd.DataFrame(index=loc_nodes['loc_id'].unique())
 
     graph_obj = StellarGraph({
         "experts": ex_nodes_unique,
@@ -208,19 +136,16 @@ def generate_walks(sk_nodes, ex_nodes, loc_nodes, df_edge_list):
         print("Number of unique nodes in the random walks: {}".format(len(unique_nodes)))
 
         str_walks = [[str(n) for n in walk] for walk in walks]
+        print("Time Taken To Generate Random Walks %s seconds ---" % (time.time() - start_time))
     return str_walks, graph_obj
 
 def generate_metapaths(str_walks, graph_obj):
 
-
-    print("Time Taken To Generate Random Walks %s seconds ---" % (time.time() - start_time))
-
     start_time = time.time()
 
     try:
-        if os.path.exists(emb_fpath):
-            print('Node Embeddings File Exists, Loading the file : ')
-            node_embedding_dict = np.load(emb_fpath, allow_pickle=True).item()
+        normalized_dict = np.load(emb_fpath, allow_pickle=True).item()
+        print('Node Embeddings File Exists, Loading the file : ')
     except FileNotFoundError:
         print('File Does not exists, Generating Embeddings...')
         print('Starting to Train Word2Vec Model')
@@ -288,7 +213,7 @@ def generate_metapaths(str_walks, graph_obj):
         mean_array = np.mean(np.array(list(reshaped_dict.values())), axis=0)
 
 
-        for i in find_missing_nodes(list(reshaped_dict.keys())+):
+        for i in find_missing_nodes(list(reshaped_dict.keys())):
             reshaped_dict.update({i: mean_array})
 
         print('Output:', len(reshaped_dict))

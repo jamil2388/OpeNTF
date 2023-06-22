@@ -117,12 +117,12 @@ def run(data_list, domain_list, filter, model_list, output, settings):
         datapath = data_list[domain_list.index(d_name)]
         prep_output = f'./../data/preprocessed/{d_name}/{os.path.split(datapath)[-1]}'
         vecs, indexes = d_cls.generate_sparse_vectors(datapath, f'{prep_output}{filter_str}', filter, settings['data'])
-        gnn_path = train_node_emb.generate_emb()
         mem_to_sk, mem_to_loc = datacheck.edge_generation(vecs)
         expert_nodes, skill_nodes, loc_nodes, df_edgelist = datacheck.preprocess(mem_to_sk, mem_to_loc)
+        gnn_path = train_node_emb.generate_emb()
         str_walks, graph_obj = metapath2vec.generate_walks(expert_nodes, skill_nodes, loc_nodes, df_edgelist)
         meta_file = metapath2vec.generate_metapaths(str_walks, graph_obj)
-        emb_dict, emb_dict_meta = datacheck.emb_process(emb_file, meta_file)
+        emb_dict, emb_dict_meta = datacheck.emb_process(gnn_path, meta_file, vecs)
 
         splits = create_evaluation_splits(vecs['id'].shape[0], settings['model']['nfolds'], settings['model']['train_test_split'], indexes['i2y'] if temporal else None, output=f'{prep_output}{filter_str}', step_ahead=settings['model']['step_ahead'])
 
@@ -191,4 +191,3 @@ if __name__ == '__main__':
         settings=param.settings)
 
     # aggregate(args.output)
-

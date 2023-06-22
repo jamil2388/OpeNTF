@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 
-DATASET_DIR = "../data/preprocessed/uspt/"
+DATASET_DIR = r"../data/preprocessed/uspt"
 # Random Seed
 RANDOM_SEED = 42
 
