@@ -84,7 +84,7 @@ def find_missing_nodes(lst):
 
     return missing_numbers
 
-def generate_walks(sk_nodes, ex_nodes, loc_nodes, df_edge_list):
+def generate_walks(ex_nodes, sk_nodes, loc_nodes, df_edge_list):
     start_time = time.time()
     sk_nodes.rename(columns={'col1': 'sk_id'}, inplace=True)
     ex_nodes.rename(columns={'col1': 'ex_id'}, inplace=True)
@@ -93,7 +93,6 @@ def generate_walks(sk_nodes, ex_nodes, loc_nodes, df_edge_list):
     ex_nodes_unique = pd.DataFrame(index=ex_nodes['ex_id'].unique())
     sk_nodes_unique = pd.DataFrame(index=sk_nodes['sk_id'].unique())
     loc_nodes_unique = pd.DataFrame(index=loc_nodes['loc_id'].unique())
-
     graph_obj = StellarGraph({
         "experts": ex_nodes_unique,
         "skills":sk_nodes_unique,
@@ -144,14 +143,30 @@ def generate_metapaths(str_walks, graph_obj):
     start_time = time.time()
 
     try:
-        normalized_dict = np.load(emb_fpath, allow_pickle=True).item()
+        normalized_dict = {'experts': {}, 'skills': {}, 'loc': {}}
+        loaded_file = np.load(emb_fpath, allow_pickle=True).item()
         print('Node Embeddings File Exists, Loading the file : ')
+        print(normalized_dict.keys())
+        num_nodes = {}
+        for node_type in graph_obj.node_types:
+          num_nodes[node_type] = graph_obj.nodes(node_type).shape[0]
+
+        normalized_dict['experts'] = np.array(list(loaded_file.items())[:num_nodes['experts']])
+        normalized_dict['skills'] = np.array(list(loaded_file.items())[num_nodes['experts']:num_nodes['experts'] + num_nodes['skills']])
+        normalized_dict['loc'] = np.array(list(loaded_file.items())[num_nodes['experts'] + num_nodes['skills']:])
+        print(normalized_dict.keys())
+        print(normalized_dict['experts'].shape)
+        print(normalized_dict['skills'].shape)
+        print(normalized_dict['loc'].shape)
+        # node_counts = pd.Series(node_types).value_counts()
+        # exit()
+        return normalized_dict
     except FileNotFoundError:
         print('File Does not exists, Generating Embeddings...')
         print('Starting to Train Word2Vec Model')
         word2vec_params = {
             'sg': 0,
-            "vector_size": emb_dim,
+            "size": emb_dim,
             "alpha": 0.5,
             "min_alpha": 0.001,
             'window': 5,
@@ -160,7 +175,7 @@ def generate_metapaths(str_walks, graph_obj):
             "negative": 1,
             "hs": 0,  # 0: negative sampling, 1:hierarchical  softmax
             'compute_loss': True,
-            'epochs': 10,
+            'iter': 10,
             'cbow_mean': 1,
         }
 
@@ -212,7 +227,7 @@ def generate_metapaths(str_walks, graph_obj):
 
         mean_array = np.mean(np.array(list(reshaped_dict.values())), axis=0)
 
-
+        print('len of reshaped dicts', len(reshaped_dict))
         for i in find_missing_nodes(list(reshaped_dict.keys())):
             reshaped_dict.update({i: mean_array})
 
@@ -253,5 +268,4 @@ def generate_metapaths(str_walks, graph_obj):
 
         with open('metapaths_emb.pkl', 'wb') as file:
             pickle.dump(normalized_dict, file)
-
-        return  normalized_dict
+        return normalized_dict
