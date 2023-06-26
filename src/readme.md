@@ -20,7 +20,8 @@ This folder contains our implementation of neural team formation, including all 
 
 # Run
 
-The execution of graph based learning techniques follows the same process and command as for neural network execution. 
+The execution of graph based learning techniques follows the same process and command as for neural network execution.\
+
 List of available graph models: - 
 	- bnn_emb_gnn_loc : Graph based embeddging generation involving skills and location followed by bnn model execution.
 	- bnn_emb_gnn : Graph based embeddging generation involving followed by bnn model execution.
