@@ -1,4 +1,4 @@
-torch>=1.9.0
+torch>=1.12.0
 scipy==1.6.3
 numpy==1.20.3
 tqdm==4.60.0
@@ -11,3 +11,7 @@ matplotlib==3.4.2
 OpenNMT-py==2.2.0
 #schedule
 python-dateutil==2.8.2
+networkx
+torch_geometric
+contextlib
+joblib 
