@@ -1,10 +1,8 @@
 # ``OpeNTF``: An Open-Source Neural Team Formation Benchmark Library 
-Effective team formation is crucial for project success, influenced by skill diversity and geographic proximity. This paper proposes a novel approach for geo-spatial team formation that leverages graph neural network (gnn) embeddings to transfer knowledge from a heterogenous collaborative network among experts, with metapaths and lack thereof, followed by a neural-based multi-label classifier. Our method aims to optimize team composition by considering the interplay between skill compatibility and geographic cohesiveness. Specifically, we construct a heterogeneous graph representation whose nodes are experts, skills, and locations to capture the complex relationships between experts' skills and their geographic locations.. We employ gnn to learn vector representations of experts, encoding both their skill profiles and geographic information using metapaths. We propose a multi-objective optimization to guide the team formation process. The objective is to maximize skill diversity while minimizing geographic dispersion, balancing effective collaboration and efficient communication. We utilize classification and information retrieval metrics to evaluate the accuracy of the recommended teams of experts concerning the required skills and geographical distribution. Experimental evaluations of our proposed method on a real-world dataset of patents and computer science publications against baseline methods demonstrated the effectiveness of our approach in forming diverse and geographically cohesive teams. The findings of this study contribute to the field of team formation by highlighting the benefits of incorporating gnn embeddings considering skill and location in tandem for the task of team formation.
+Effective team formation is crucial for project success, influenced by skill coverage and geographic proximity. This paper proposes a novel approach for spatial team formation that leverages graph neural network (gnn) embeddings to transfer knowledge from a heterogenous collaborative network among experts, with metapaths and lack thereof, followed by a neural-based multi-label classifier. Our method aims to optimize team composition by considering the interplay between skill compatibility and geographic cohesiveness. Specifically, we construct a heterogeneous graph representation whose nodes are experts, skills, and locations to capture the complex relationships between experts' skills and their geographic locations. 
 
-## :movie_camera: [`Demo`](https://youtu.be/nFLow5Oy9nw)
-In this paper, we address the geo-spatial team formation problem; given a set of experts, complementary skills and locations, which includes experts’ geographical location in terms of country, province, or city, the goal is to find the optimal team and to figure out whether the combination of two characteristics such as skills and locations has a synergistic effect. We define an optimal team as one whose members are most likely to produce a desired output and are proven successful in their respective domains. Prior works have been shown to address the problem of team formation by using skills as a primary factor which affects a team’s performance[4] but overlooking location and the corresponding ties it leads to between experts within a team. Integrating geographic location is crucial in today's globalized work environment. Although remote work over online platforms is growing, geographical proximity remains important for face-to-face interactions, cultural understanding, time zone differences, trust and team cohesion and local expertise and resources. The team members' geographical location can significantly impact team dynamics, coordination, and effectiveness. By considering both skills and locations in team formation, organizations can strive to create teams that are both skill-diverse and geographically cohesive, promoting efficient collaboration and reducing potential challenges associated with distance and time zone differences. However, despite its importance, including location as a criterion in conjunction with skill in team formation has yet to be studied.
-By understanding the relationship between skills and locations, organizations can strategically assemble teams that leverage expertise and geographic proximity, leading to improved communication, knowledge sharing, and potentially higher team performance. This research aims to bridge the gap in existing studies by investigating the combined influence of skills and locations on team formation and identifying the key factors contributing to successful team outcomes in a geospatial context. This research follows the recent trends in the team formation problem, which involves using neural networks, graph neural network approaches, testing our proposed methodology on different datasets, such as USPT[5] and DBLP[6], and comparing our results with the state-of-the-art baselines. We define terms used in our work, such as experts as individuals with their respective patents in the case of USPT and publications in the case of the DBLP dataset. Skills are the possible field in which the experts worked to get their respective patents/publications accepted. We refer to locations as experts’ geolocation at the time of their submission for a patent/publication. A successful expert is an expert who has their respective work accepted for their respective fields. We utilize a graph neural network by making a heterogeneous graph consisting of nodes of experts, skills and locations. We utilize two different approaches for embedding generation from graphs that include without metapath training and with metapath training. A metapath is a walk taken by a graph neural network from a source node to a destination node so that the trained model attains better coverage and captures neighbourhood information for that particular source node. These trained embeddings are then processed into teams where each team consists of skills, experts and location for a particular patent or a publication. We then feed these skills and locations of a team into a bayesian neural network whose output is the most probable set of experts.
- 
+## :movie_camera: [`Demo`]
+We propose a multi-objective optimization to guide the team formation process. We employ gnn to learn vector representations of experts, encoding both their skill profiles and geographic information using metapaths. The objective is to maximize skill coverage while minimizing geographic dispersion, balancing effective collaboration and efficient communication. We utilize classification and information retrieval metrics to evaluate the accuracy of the recommended teams of experts concerning the required skills and geographical distribution. Experimental evaluations of our proposed method on a real-world dataset of patents and computer science publications against baseline methods demonstrated the effectiveness of our approach in forming diverse and geographically cohesive teams. The findings of this study contribute to the field of team formation by highlighting the benefits of incorporating gnn embeddings considering skill and location in tandem for the task of team formation.
 
 1. [Setup](#1-setup)
 2. [Quickstart](#2-quickstart)
@@ -15,8 +13,8 @@ By understanding the relationship between skills and locations, organizations ca
 7. [Citation](#7-citation)
 8. [Awards](#8-awards)
 
-## 1. [Setup](https://colab.research.google.com/github/fani-lab/OpeNTF/blob/main/quickstart.ipynb)
-You need to have ``Python >= 3.8`` and install the following main packages, among others listed in [``requirements.txt``](requirements.txt):
+## 1. [Setup](https://colab.research.google.com/drive/1hM2JFuLlOkkQQFcxRHAoEPyi83a_lxV2?usp=sharing)
+You need to have ``3.8 <= Python <= 3.9 `` and install the following main packages, among others listed in [``requirements.txt``](requirements.txt):
 ```
 torch>=1.9.0
 pytrec-eval-terrier==0.5.2
@@ -24,14 +22,14 @@ gensim==3.8.3
 ```
 By ``pip``, clone the codebase and install required packages:
 ```sh
-git clone https://github.com/Fani-Lab/opentf
+git clone -b geo https://github.com/Fani-Lab/opentf
 cd opentf
 pip install -r requirements.txt
 ```
 By [``conda``](https://www.anaconda.com/products/individual):
 
 ```sh
-git clone https://github.com/Fani-Lab/opentf
+git clone -b geo https://github.com/Fani-Lab/opentf
 cd opentf
 conda env create -f environment.yml
 conda activate opentf
@@ -43,21 +41,27 @@ For installation of specific version of a python package due to, e.g., ``CUDA`` 
 # CUDA 10.1
 torch==1.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-## 2. Quickstart [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/fani-lab/OpeNTF/blob/main/quickstart.ipynb)
+Stellargraph library is inconsistent when installed via pip and throws errors. Hence to make installation of libraries smoother we have noted down the steps to install Stellargraph library separately. 
+```
+# Stellargraph
+import os
+!git clone https://github.com/stellargraph/stellargraph.git
+os.chdir('../../stellargraph')
+!pip install .
+```
+## 2. Quickstart [![Open In Colab](quickstart.ipynb)]
 
 ```sh
 cd src
 python main.py -data ../data/raw/uspt/toy.patent.tsv -domain uspt -model bnn_emb_gnn -filter 0
 ```
 
-The above run, loads and preprocesses a tiny-size toy example dataset [``toy.dblp.v12.json``](data/raw/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z) followed by 5-fold train-evaluation on a training split and final test on the test set for ``feedforward`` and ``Bayesian`` neural models using default hyperparameters from [``./src/param.py``](./src/param.py).
+The above run, loads and preprocesses a tiny-size toy example dataset [``toy.patent.tsv``](data/raw/dblp/toy.patent.tsv) from [``uspt``](https://patentsview.org/download/data-download-tables) followed by 5-fold train-evaluation on a training split and final test on the test set for ``feedforward`` and ``Bayesian`` neural models using default hyperparameters from [``./src/param.py``](./src/param.py).
 
 ## 3. Features
-**Datasets and Parallel Preprocessing**
+**Datasets**
 
-Raw dataset, e.g., scholarly papers from AMiner's citation network dataset of [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z), movies from [``imdb``](https://datasets.imdbws.com/), or US patents from [``uspt``](https://patentsview.org/download/data-download-tables) were assumed to be populated in [``data/raw``](data/raw). For the sake of integration test, tiny-size toy example datasets [``toy.dblp.v12.json``](data/raw/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [[``toy.title.basics.tsv``](data/raw/imdb/toy.title.basics.tsv), [``toy.title.principals.tsv``](data/raw/imdb/toy.title.principals.tsv), [``toy.name.basics.tsv``](data/raw/imdb/toy.name.basics.tsv)] from [``imdb``](https://datasets.imdbws.com/) and [``toy.patent.tsv``](data/preprocessed/uspt/toy.patent.tsv) have been already provided.
-
-<p align="center"><img src='./src/cmn/team_inheritance_hierarchy.png' width="250" ></p>
+Raw dataset, e.g., scholarly papers from AMiner's citation network dataset of US patents from [``uspt``](https://patentsview.org/download/data-download-tables), publication data from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z)(experimentation in progress) were assumed to be populated in [``data/raw``](data/raw). For the sake of integration test, tiny-size toy example datasets [``toy.dblp.v12.json``](data/raw/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z), and [``toy.patent.tsv``](data/preprocessed/uspt/toy.patent.tsv) have been already provided.
 
 Raw data will be preprocessed into two main ``sparse`` matrices each row of which represents: 
 
@@ -67,11 +71,7 @@ Raw data will be preprocessed into two main ``sparse`` matrices each row of whic
 
 Also, indexes will be created to map the vector's indexes to members' names and skills' names, i.e., ``i2c``, ``c2i``, ``i2s``, ``s2i``.
 
-The sparse matrices and the indices will be persisted in [``data/preprocessed/{dblp,imdb,uspt}/{name of dataset}``](data/preprocessed/) as pickles ``teamsvecs.pkl`` and ``indexes.pkl``. For example, the preprocessed data for our dblp toy example are [``data/preprocessed/dblp/toy.dblp.v12.json/teamsvecs.pkl``](data/preprocessed/dblp/toy.dblp.v12.json/teams.pkl) and [``data/preprocessed/dblp/toy.dblp.v12.json/indexes.pkl``](data/preprocessed/dblp/toy.dblp.v12.json/indexes.pkl).
-
-> Our pipeline benefits from parallel generation of sparse matrices for teams that significantly reduces the preprocessing time as shown below:
-> 
-> <p align="center"><img src="./data/speedup.jpg" width="200"><img src="./data/speedup_loglog.jpg" width="190"></p>
+The sparse matrices and the indices will be persisted in [``data/preprocessed/{uspt, dblp}/{name of dataset}``](data/preprocessed/) as pickles ``teamsvecs.pkl`` and ``indexes.pkl``. For example, the preprocessed data for our dblp toy example are [``data/preprocessed/dblp/toy.dblp.v12.json/teamsvecs.pkl``](data/preprocessed/dblp/toy.dblp.v12.json/teams.pkl) and [``data/preprocessed/dblp/toy.dblp.v12.json/indexes.pkl``](data/preprocessed/dblp/toy.dblp.v12.json/indexes.pkl).
 
 
 Please note that the preprocessing step will be executed once. Subsequent runs load the persisted pickle files. In order to regenerate them, one should simply delete them. 
@@ -82,10 +82,22 @@ We randomly take ``85%`` of the dataset for the train-validation set and ``15%``
 
 We use _n_-fold cross-validation, that is, we train a model _n_ times on _(n-1)_ folds and utilize the remaining fold as the validation set to adjust the learning rate during training. The number of folds is set by ``nfolds`` in [``./src/param.py``](./src/param.py). In total, we have _n_ models each of which will be evaluated on the test set.
 
-At each run, we store ids of instances in train-validation folds and test set in [``./data/preprocessed/{dblp,imdb,uspt}/{name of dataset}/splits.json``](data/preprocessed/) like in [``./data/preprocessed/dblp/toy.dblp.v12.json/splits.json``](./data/preprocessed/dblp/toy.dblp.v12.json/splits.json)
+At each run, we store ids of instances in train-validation folds and test set in [``./data/preprocessed/{uspt,dblp}/{name of dataset}/splits.json``](data/preprocessed/) like in [``./data/preprocessed/dblp/toy.dblp.v12.json/splits.json``](./data/preprocessed/dblp/toy.dblp.v12.json/splits.json)
 
 **Model Architecture**
+***Graph Neural Network***
+We employ graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py). 
 
+**Metapath Integration**
+To incorporate a deeper connection of relationships in which a graph takes a predefined path between experts, skills and locations, we implement metapath based vector generation. We utilize three different sets of metapaths: 
+``["experts", "skills", "experts"]``
+``["experts", "skills", "experts", "skills", "experts"]``
+``["experts", "skills", "loc", "skills", "experts"]``
+
+The walk length for each metapath and number of metapaths generation is handled by ``walk_length``
+``num_walks_per_node`` which can be set in [``./src/metapath2vec.py](./src/metapath2vec.py)
+ 
+***Neural Model***
 Each model has been defined in [``./src/mdl/``](./src/mdl/) under an inheritance hierarchy. They override abstract functions for ``train``, ``test``, ``eval``, and ``plot`` steps. 
 For example, for our feedforward baseline [``fnn``](./src/mdl/fnn.py), the model has been implemented in [``./src/mdl/fnn.py``](src/mdl/fnn.py). Model's hyperparameters such as the learning rate (``lr``) or the number of epochs (``e``) can be set in [``./src/param.py``](src/param.py).
 
@@ -116,9 +128,9 @@ To include a negative sampling strategy, there are two parameters for a model to
 **Run**
 
 The pipeline accepts three required list of values:
-1) ``-data``: list of path to the raw datafiles, e.g., ``-data ./../data/raw/dblp/dblp.v12.json``, or the main file of a dataset, e.g., ``-data ./../data/raw/imdb/title.basics.tsv``
-2) ``-domain``: list of domains of the raw data files that could be ``dblp``, ``imdb``, or `uspt`; e.g., ``-domain dblp imdb``.
-3) ``-model``: list of baseline models that could be ``fnn``, ``fnn_emb``, ``bnn``, ``bnn_emb``, ``random``; e.g., ``-model random fnn bnn`` 
+1) ``-data``: list of path to the raw datafiles, e.g., ``-data ./../data/raw/uspt/patent.tsv``
+2) ``-domain``: list of domains of the raw data files that could be ``uspt`` or ``dblp``; e.g., ``-domain uspt``.
+3) ``-model``: list of graph models that could be ``bnn_emb_gnn_meta``, ``bnn_emb_gnn_loc_meta``, ``bnn``, ``bnn_emb_gnn``, ``bnn_emb_gnn_loc``; e.g., ``-model bnn_emb_gnn_loc`` 
 
 ## 4. Results
 
@@ -139,11 +151,9 @@ We used [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval) to evaluate 
 |Results|[``./output/patent.tsv.filtered.mt75.ts3/``](./output/patent.tsv.filtered.mt75.ts3/)|
 
 <p align="center">
-![image](https://github.com/fani-lab/OpeNTF/assets/19558771/792ab813-ce1a-4bc4-8a6b-9011621658ba)
-
-
-![image](https://github.com/fani-lab/OpeNTF/assets/19558771/f6836aa1-7943-477d-acbc-a3ae60e94313)
-
+<img src='https://user-images.githubusercontent.com/8619934/154041216-c80cccfb-70a2-4831-8781-cdb4718fb00e.png' >
+<p align="center">
+<img src='https://user-images.githubusercontent.com/8619934/154041087-e4d99b1e-eb6b-456a-837b-840e4bd5090a.png' >
 
 Full predictions of all models on test and training sets and the values of evaluation metrics, per instance and average, are available in a rar file of size ``74.8GB`` and will be delivered upon request! 
 
