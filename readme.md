@@ -85,10 +85,13 @@ We use _n_-fold cross-validation, that is, we train a model _n_ times on _(n-1)_
 At each run, we store ids of instances in train-validation folds and test set in [``./data/preprocessed/{uspt,dblp}/{name of dataset}/splits.json``](data/preprocessed/) like in [``./data/preprocessed/dblp/toy.dblp.v12.json/splits.json``](./data/preprocessed/dblp/toy.dblp.v12.json/splits.json)
 
 **Model Architecture**
+
 ***Graph Neural Network***
+
 We employ graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py). 
 
 **Metapath Integration**
+
 To incorporate a deeper connection of relationships in which a graph takes a predefined path between experts, skills and locations, we implement metapath based vector generation. We utilize three different sets of metapaths: 
 ``["experts", "skills", "experts"]``
 ``["experts", "skills", "experts", "skills", "experts"]``
@@ -98,6 +101,7 @@ The walk length for each metapath and number of metapaths generation is handled 
 ``num_walks_per_node`` which can be set in [``./src/metapath2vec.py](./src/metapath2vec.py)
  
 ***Neural Model***
+
 Each model has been defined in [``./src/mdl/``](./src/mdl/) under an inheritance hierarchy. They override abstract functions for ``train``, ``test``, ``eval``, and ``plot`` steps. 
 For example, for our feedforward baseline [``fnn``](./src/mdl/fnn.py), the model has been implemented in [``./src/mdl/fnn.py``](src/mdl/fnn.py). Model's hyperparameters such as the learning rate (``lr``) or the number of epochs (``e``) can be set in [``./src/param.py``](src/param.py).
 
