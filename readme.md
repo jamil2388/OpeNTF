@@ -160,7 +160,7 @@ We used [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval) to evaluate 
 |--------|------|
 |Datasets|[uspt](https://patentsview.org/download/data-download-tables)|
 |Metrics|recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc|
-|Baselines|{fnn,bnn}×{sparse, emb}×{none, uniform, unigram, unigram_b}|
+|Baselines|{bnn}×{emb_gnn_meta, emb_gnn_loc_meta, emb_gnn, emb_gnn_loc}×{none, uniform, unigram, unigram_b}|
 |Results|[``./output/patent.tsv.filtered.mt75.ts3/``](./output/patent.tsv.filtered.mt75.ts3/)|
 
 <p align="center">
