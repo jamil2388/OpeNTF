@@ -85,10 +85,20 @@ We use _n_-fold cross-validation, that is, we train a model _n_ times on _(n-1)_
 At each run, we store ids of instances in train-validation folds and test set in [``./data/preprocessed/{uspt,dblp}/{name of dataset}/splits.json``](data/preprocessed/) like in [``./data/preprocessed/dblp/toy.dblp.v12.json/splits.json``](./data/preprocessed/dblp/toy.dblp.v12.json/splits.json)
 
 **Model Architecture**
+
 ***Graph Neural Network***
-We employ graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py). 
+
+We employ graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py).  The heterogeneous graph g consist of three nodes experts, e ∈ E, skills,s ∈ S and location, l ∈ L An edge in this heterogeneous graph (g = (E, S, L) is a relation between an expert and his/her consecutive skill or location. To construct our graph neural network pipeline, we utilize two graph convolutional layers (gcn) [16], a dropout layer followed by relu activation function. We concatenate the input nodes into a single node x with edges distinguishing between each node type. These nodes, edge indices are then fed into the gcn layers to facilitate the training of node embeddings.
+
+<p align="center"><img src='./misc/workflow.png' width="750" ></p>
+
+
+```Input to GNN: - g(x=(e, s, l), edges = (expert->skill, expert->loc))```
+
+```Output of GNN: - g`(x`=(e`, s`, l`)```
 
 **Metapath Integration**
+
 To incorporate a deeper connection of relationships in which a graph takes a predefined path between experts, skills and locations, we implement metapath based vector generation. We utilize three different sets of metapaths: 
 ``["experts", "skills", "experts"]``
 ``["experts", "skills", "experts", "skills", "experts"]``
@@ -96,8 +106,11 @@ To incorporate a deeper connection of relationships in which a graph takes a pre
 
 The walk length for each metapath and number of metapaths generation is handled by ``walk_length``
 ``num_walks_per_node`` which can be set in [``./src/metapath2vec.py](./src/metapath2vec.py)
+
+<p align="center"><img src='./misc/metapath.png' width="750" ></p>
  
 ***Neural Model***
+
 Each model has been defined in [``./src/mdl/``](./src/mdl/) under an inheritance hierarchy. They override abstract functions for ``train``, ``test``, ``eval``, and ``plot`` steps. 
 For example, for our feedforward baseline [``fnn``](./src/mdl/fnn.py), the model has been implemented in [``./src/mdl/fnn.py``](src/mdl/fnn.py). Model's hyperparameters such as the learning rate (``lr``) or the number of epochs (``e``) can be set in [``./src/param.py``](src/param.py).
 
@@ -151,9 +164,9 @@ We used [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval) to evaluate 
 |Results|[``./output/patent.tsv.filtered.mt75.ts3/``](./output/patent.tsv.filtered.mt75.ts3/)|
 
 <p align="center">
-<img src='https://user-images.githubusercontent.com/8619934/154041216-c80cccfb-70a2-4831-8781-cdb4718fb00e.png' >
-<p align="center">
-<img src='https://user-images.githubusercontent.com/8619934/154041087-e4d99b1e-eb6b-456a-837b-840e4bd5090a.png' >
+![Alt text](misc/usptstat.png)
+![Alt text](image.png)
+![Alt text](image.png)
 
 Full predictions of all models on test and training sets and the values of evaluation metrics, per instance and average, are available in a rar file of size ``74.8GB`` and will be delivered upon request! 
 
