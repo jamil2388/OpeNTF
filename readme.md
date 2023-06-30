@@ -49,7 +49,7 @@ import os
 os.chdir('../../stellargraph')
 !pip install .
 ```
-## 2. Quickstart [![Open In Colab](quickstart.ipynb)]
+## 2. Quickstart [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](quickstart.ipynb)
 
 ```sh
 cd src
@@ -88,9 +88,9 @@ At each run, we store ids of instances in train-validation folds and test set in
 
 ***Graph Neural Network***
 
-We employ graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py).  The heterogeneous graph g consist of three nodes experts, e ∈ E, skills,s ∈ S and location, l ∈ L An edge in this heterogeneous graph (g = (E, S, L) is a relation between an expert and his/her consecutive skill or location. To construct our graph neural network pipeline, we utilize two graph convolutional layers (gcn) [16], a dropout layer followed by relu activation function. We concatenate the input nodes into a single node x with edges distinguishing between each node type. These nodes, edge indices are then fed into the gcn layers to facilitate the training of node embeddings.
+We employ a graph convolutional network to capture the underlying relations between experts, skills and locations. We construct a heterogeneous graph with nodes experts, skills and locations with edges represented as expert->skill, and expert->location. The hyperparameters used for training gcn can be set in [``./src/config_prepare_dataset.py](./src/config_prepare_dataset.py).  The heterogeneous graph g consists of three nodes experts, e ∈ E, skills,s ∈ S and location, l ∈ L An edge in this heterogeneous graph (g = (E, S, L) is a relation between an expert and his/her consecutive skill or location. To construct our graph neural network pipeline, we utilize two graph convolutional layers (gcn) [16], a dropout layer followed by a relu activation function. We concatenate the input nodes into a single node x with edges distinguishing between each node type. These nodes, and edge indices are then fed into the gcn layers to facilitate the training of node embeddings.
 
-<p align="center"><img src='./misc/workflow.png' width="750" ></p>
+<p align="center"><img src='./misc/Workflow.png' "width="350" ></p>
 
 
 ```Input to GNN: - g(x=(e, s, l), edges = (expert->skill, expert->loc))```
@@ -107,7 +107,7 @@ To incorporate a deeper connection of relationships in which a graph takes a pre
 The walk length for each metapath and number of metapaths generation is handled by ``walk_length``
 ``num_walks_per_node`` which can be set in [``./src/metapath2vec.py](./src/metapath2vec.py)
 
-<p align="center"><img src='./misc/metapath.png' width="750" ></p>
+<p align="center"><img src='./misc/Metapaths.png' "width="350" ></p>
  
 ***Neural Model***
 
@@ -163,10 +163,8 @@ We used [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval) to evaluate 
 |Baselines|{bnn}×{emb_gnn_meta, emb_gnn_loc_meta, emb_gnn, emb_gnn_loc}×{none, uniform, unigram, unigram_b}|
 |Results|[``./output/patent.tsv.filtered.mt75.ts3/``](./output/patent.tsv.filtered.mt75.ts3/)|
 
-<p align="center">
-![Alt text](misc/usptstat.png)
-![Alt text](image.png)
-![Alt text](image.png)
+<p align="center"><img src='./output/patent.tsv.filtered.mt75.ts3/Table_1_results.JPG' "width="350" ></p>
+<p align="center"><img src='./output/patent.tsv.filtered.mt75.ts3/Table_2_results.JPG' "width="350" ></p>
 
 Full predictions of all models on test and training sets and the values of evaluation metrics, per instance and average and will be delivered upon request! 
 
