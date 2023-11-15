@@ -1,3 +1,5 @@
+import math
+
 import torch_geometric.data
 
 import graph_params
@@ -44,7 +46,7 @@ class Metapath2Vec():
                              walks_per_node=5, num_negative_samples=5,
                              sparse=True).to(self.device)
 
-        self.loader = self.model.loader(batch_size=30, shuffle=True, num_workers=1)
+        self.loader = self.model.loader(batch_size=2, shuffle=True, num_workers=1)
         self.optimizer = torch.optim.SparseAdam(list(self.model.parameters()), lr=0.01)
 
     # train the model to generate embeddings
@@ -59,18 +61,24 @@ class Metapath2Vec():
             optimizer.step()
 
             total_loss += loss.item()
-            if (i + 1) % log_steps == 0:
-                print((f'Epoch: {epoch}, Step: {i + 1:05d}/{len(loader)}, '
-                       f'Loss: {total_loss / log_steps:.4f}'))
-                total_loss = 0
+            # if (i + 1) % log_steps == 0:
+            #     print((f'Epoch: {epoch}, Step: {i + 1:05d}/{len(loader)}, '
+            #            f'Loss: {total_loss / log_steps:.4f}'))
+            #     total_loss = 0
+        return total_loss / len(loader)
 
     def run(self, num_epochs):
         self.init()
 
         losses = []
+        min_loss = math.inf
 
         for epoch in range(num_epochs):
-            self.learn(self.model, self.optimizer, self.loader, self.device, epoch)
+            loss = self.learn(self.model, self.optimizer, self.loader, self.device, epoch)
+            # if(loss < min):
+            #     print(f'epoch : {epoch}, loss = {loss}')
+
+        losses.append(loss)
 
 
 def main(max_epochs = [10]):
