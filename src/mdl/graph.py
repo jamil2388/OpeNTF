@@ -15,21 +15,46 @@ class Graph:
         self.init_variables()
 
     def init_variables(self):
+
+        # detect the model name, then access the parameters specific to that model
+        if('GNN' in str(self.__class__)):
+            print(f'Model name is gnn')
+            self.model_name = 'gnn'
+        elif('GCN' in str(self.__class__)):
+            print(f'Model name is gcn')
+            self.model_name = 'gcn'
+        elif ('GAT' in str(self.__class__)):
+            print(f'Model name is gat')
+            self.model_name = 'gat'
+        elif ('GIN' in str(self.__class__)):
+            print(f'Model name is gin')
+            self.model_name = 'gin'
+        elif ('Node2Vec' in str(self.__class__)):
+            print(f'Model name is n2v')
+            self.model_name = 'n2v'
+        elif ('Metapath2Vec' in str(self.__class__)):
+            print(f'Model name is m2v')
+            self.model_name = 'm2v'
+
+
         self.params = graph_params.settings
         params = self.params
 
         # model parameters
-        model_params = params['model']['m2v']['model_params']
+        model_params = params['model'][self.model_name]['model_params']
         self.embedding_dim = model_params['embedding_dim']
         self.max_epochs = model_params['max_epochs']
         self.walk_length = model_params['walk_length']
         self.walks_per_node = model_params['walks_per_node']
         self.context_size = model_params['context_size']
         self.num_negative_samples = model_params['num_negative_samples']
-        self.batch_size = model_params['batch_size']
-        self.shuffle = model_params['shuffle']
-        self.num_workers = model_params['num_workers']
         self.lr = model_params['lr']
+
+        # loader parameters
+        loader_params = params['model'][self.model_name]['loader_params']
+        self.num_workers = loader_params['num_workers']
+        self.batch_size = loader_params['batch_size']
+        self.loader_shuffle = loader_params['loader_shuffle']
 
         self.output_types = params['storage']['output_type']
         self.output_type = self.output_types[0]
@@ -38,7 +63,6 @@ class Graph:
         self.data_versions = list(params['data']['domain'][self.domain].keys())
         self.data_version = self.data_versions[0]
         self.model_names = list(params['model'].keys())
-        self.model_name = self.model_names[5]
         self.graph_edge_types = list(params['model']['m2v']['edge_types'].keys())
         self.graph_edge_type = self.graph_edge_types[0]
 
@@ -48,6 +72,7 @@ class Graph:
         # base_filename
         # base_graph_emb_filename
         # base_graph_plot_filename
+        self.lazy_load = params['storage']['lazy_load']
         self.base_folder = params['storage']['base_folder']
         self.base_filename = params['storage']['base_filename']
         self.teams_graph_output_folder = f'{self.base_folder}/{self.output_type}/{self.domain}/{self.data_version}'
@@ -65,20 +90,29 @@ class Graph:
         self.graph_plot_filename = f'{self.graph_preprocessed_output_folder}/{self.base_graph_plot_filename}.{self.model_name}.{self.graph_edge_type}.'
         # -------------------------------------------
 
+    def init_model(self):
+        pass
+
+    def learn(self, model, optimizer, loader, device, epoch, log_steps=50, eval_steps=2000):
+        pass
+
+    def load(self, graph_datapath):
+        pass
+
     # normalizr an np_array into a range of 0-1
     def normalize(self, np_array):
         mx = np.max(np_array)
         mn = np.min(np_array)
 
-        print(f'\nNormalize()\n')
-        print(f'Before :')
-        print(f'{np_array}')
+        # print(f'\nNormalize()\n')
+        # print(f'Before :')
+        # print(f'{np_array}')
 
         np_array = (np_array - mn) / (mx - mn)
 
-        print(f'After :')
-        print(f'{np_array}')
-        print('')
+        # print(f'After :')
+        # print(f'{np_array}')
+        # print('')
 
         return np_array
 

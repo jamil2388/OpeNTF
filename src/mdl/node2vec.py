@@ -9,10 +9,10 @@ from src.misc import data_handler
 import os
 import torch
 from src.mdl import gnn_emb
-from torch_geometric.nn import MetaPath2Vec
+from torch_geometric.nn import Node2Vec
 import numpy as np
 
-class Metapath2Vec(src.mdl.graph.Graph):
+class Node2Vec(src.mdl.graph.Graph):
 
     # setup the entire model before running
     def __init__(self):
@@ -28,8 +28,8 @@ class Metapath2Vec(src.mdl.graph.Graph):
         # in the graph_params.py file
         # model_params is a local file for convenient access
         model_params = self.params['model'][self.model_name]['model_params']
-        self.shuffle = model_params['shuffle']
-        self.metapath = model_params['metapath']
+        self.p = model_params['p']
+        self.q = model_params['q']
 
     # this will load the desired graph data for running with the model
     def load(self, graph_datapath):
@@ -43,10 +43,9 @@ class Metapath2Vec(src.mdl.graph.Graph):
         assert type(self.data) == torch_geometric.data.hetero_data.HeteroData
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model = MetaPath2Vec(self.data.edge_index_dict, embedding_dim=self.embedding_dim,
+        self.model = Node2Vec(self.data.edge_index, embedding_dim=self.embedding_dim,
                              metapath=self.metapath, walk_length=self.walk_length, context_size=self.context_size,
-                             walks_per_node=self.walks_per_node, num_negative_samples=self.num_negative_samples,
-                             sparse=True).to(self.device)
+                             walks_per_node=self.walks_per_node, num_negative_samples=self.num_negative_samples).to(self.device)
 
         self.loader = self.model.loader(batch_size = self.batch_size, shuffle = self.loader_shuffle, num_workers = self.num_workers)
         self.optimizer = torch.optim.SparseAdam(list(self.model.parameters()), lr = self.lr)
@@ -124,7 +123,7 @@ class Metapath2Vec(src.mdl.graph.Graph):
 
 
 def main():
-    m2v = Metapath2Vec()
+    m2v = Node2Vec()
     m2v.run()
 
 if __name__ == '__main__':

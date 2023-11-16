@@ -12,16 +12,26 @@ settings = {
     'model':{
             'gnn':{},
             'gcn':{},
-            'gan':{},
+            'gat':{},
             'gin':{},
-            'n2v':{},
+            'n2v':{
+                'model_params':{
+                    'max_epochs' : [100],
+                    'embedding_dim' : 5,
+                    'walk_length' : 6,
+                    'context_size' : 3,
+                    'walks_per_node' : 5,
+                    'num_negative_samples' : 1,
+                    'p' : 1.0,
+                    'q' : 1.0,
+                },
+                'loader_params' : {
+                    'batch_size' : 5,
+                    'loader_shuffle' : True,
+                    'num_workers' : 1,
+                }
+            },
             'm2v':{
-                'metapath' : [
-                    ('member','to','id'),
-                    ('id', 'to', 'skill'),
-                    ('skill','to','id'),
-                    ('id', 'to', 'member'),
-                ],
                 'edge_types' : {
                     'STE' : {},
                     'SE' : {},
@@ -29,7 +39,13 @@ settings = {
                     'STEL' : {},
                 },
                 'model_params':{
-                    'max_epochs' : [200],
+                    'metapath' : [
+                        ('member','to','id'),
+                        ('id', 'to', 'skill'),
+                        ('skill','to','id'),
+                        ('id', 'to', 'member'),
+                    ],
+                    'max_epochs' : [10],
                     'embedding_dim' : 5,
                     'walk_length' : 6,
                     'context_size' : 3,
@@ -39,6 +55,11 @@ settings = {
                     'shuffle' : True,
                     'num_workers' : 1,
                     'lr' : 0.01,
+                },
+                'loader_params' : {
+                    'batch_size' : 5,
+                    'loader_shuffle' : True,
+                    'num_workers' : 1
                 }
             }
         },
@@ -64,6 +85,7 @@ settings = {
         'base_filename' : 'teamsvecs',
         'base_graph_emb_filename' : 'teamsvecs.emb',
         'base_graph_plot_filename' : 'teamsplot',
+        'lazy_load' : True,
     },
     'misc':{
         'graph_datapath' : '../../data/graph/raw/dblp/toy.dblp.v12.json/metapath2vec/STE/teams_graph.pkl',
