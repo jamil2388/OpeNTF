@@ -127,7 +127,7 @@ def plot(x, y):
     plt.legend()
     plt.show()
 
-# normalizr an np_array into a range of 0-1
+# normalize an np_array into a range of 0-1
 def normalize(np_array):
     mx = np.max(np_array)
     mn = np.min(np_array)

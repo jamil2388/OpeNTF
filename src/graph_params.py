@@ -14,18 +14,32 @@ settings = {
             'gcn':{},
             'gan':{},
             'gin':{},
-            'node2vec':{},
-            'metapath2vec':{
+            'n2v':{},
+            'm2v':{
                 'metapath' : [
                     ('member','to','id'),
                     ('id', 'to', 'skill'),
                     ('skill','to','id'),
                     ('id', 'to', 'member'),
                 ],
-                'STE' : {},
-                'SE' : {},
-                'STE_TL' : {},
-                'STEL' : {}
+                'edge_types' : {
+                    'STE' : {},
+                    'SE' : {},
+                    'STE_TL' : {},
+                    'STEL' : {},
+                },
+                'model_params':{
+                    'max_epochs' : [100, 200],
+                    'embedding_dim' : 5,
+                    'walk_length' : 6,
+                    'context_size' : 3,
+                    'walks_per_node' : 5,
+                    'num_negative_samples' : 5,
+                    'batch_size' : 5,
+                    'shuffle' : True,
+                    'num_workers' : 1,
+                    'lr' : 0.01,
+                }
             }
         },
     'data':{
@@ -42,11 +56,14 @@ settings = {
         },
     },
     'storage':{
-        'base_folder' : '../../data/graph/',
+        'base_folder' : '../../data/graph',
         'output_type': [
             'raw',
             'preprocessed'
         ],
+        'base_filename' : 'teamsvecs',
+        'base_graph_emb_filename' : 'teamsvecs.emb',
+        'base_graph_plot_filename' : 'teamsplot',
     },
     'misc':{
         'graph_datapath' : '../../data/graph/raw/dblp/toy.dblp.v12.json/metapath2vec/STE/teams_graph.pkl',

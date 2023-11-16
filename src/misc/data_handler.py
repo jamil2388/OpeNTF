@@ -285,22 +285,36 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------------
 
     # params when hardcoded
-    base_folder = '../../data/graph/'
-    output_type = 'raw'
-    domain = 'dblp'
-    data_version = 'toy.dblp.v12.json'
-    model_name = 'metapath2vec'
-    graph_edge_type = 'STE'
+    params = graph_params.settings
+    base_folder = params['storage']['base_folder']
+    output_types = params['storage']['output_type']
+    output_type = output_types[0]
+    domains = list(params['data']['domain'].keys())
+    domain = domains[2]
+    data_versions = list(params['data']['domain'][domain].keys())
+    data_version = data_versions[0]
+    model_names = list(params['model'].keys())
+    model_name = model_names[5]
+    graph_edge_types = list(params['model']['m2v']['edge_types'].keys())
+    graph_edge_type = graph_edge_types[0]
+    # file names, in the base name, the details of the versions and models will be added
+    sparse_matrix_file_name = 'teamsvecs.pkl'
+    graph_file_base_name = 'teamsvecs'
 
-    teamsvecs_input_filepath = f'../../data/preprocessed/dblp/toy.dblp.v12.json/teamsvecs.pkl'
+    ### Locations ###
+    #-------------------------------------------
+    teamsvecs_input_filepath = f'../../data/preprocessed/{domain}/{data_version}/{sparse_matrix_file_name}'
     # input_filepath = '../../data/preprocessed/uspt/toy.patent.tsv/teamsvecs.pkl'
     # input_filepath = '../../data/preprocessed/imdb/toy.title.basics.tsv/teamsvecs.pkl'
-    teams_graph_output_folder = f'{base_folder}/{output_type}/{domain}/{data_version}/{model_name}/{graph_edge_type}/'
-    teams_graph_output_filepath = f'{teams_graph_output_folder}/teams_graph.pkl'
+    # teams_graph_output_folder = f'{base_folder}/{output_type}/{domain}/{data_version}/{model_name}/{graph_edge_type}/'
+    teams_graph_output_folder = f'{base_folder}/{output_type}/{domain}/{data_version}'
+    # the filename should be with teamsvecs naming
+    teams_graph_output_filepath = f'{teams_graph_output_folder}/{graph_file_base_name}.{model_name}.{graph_edge_type}.pkl'
     teams_graph_input_filepath = teams_graph_output_filepath
     # this is the output folder for preprocessed embeddings and performance data
-    graph_preprocessed_output_folder = f'{base_folder}/preprocessed/{domain}/{data_version}/{model_name}/{graph_edge_type}/'
-    
+    graph_preprocessed_output_folder = f'{base_folder}/preprocessed/{domain}/{data_version}'
+    #-------------------------------------------
+
     # to make sure the path to output exists or gets created
     os.makedirs(graph_preprocessed_output_folder, exist_ok=True)
     os.makedirs(teams_graph_output_folder, exist_ok=True)
