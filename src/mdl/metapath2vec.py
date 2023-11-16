@@ -108,7 +108,7 @@ class Metapath2Vec(src.mdl.graph.Graph):
             # write to file
             outfile.write(line)
 
-        self.plot(list_epochs, losses, f'{self.graph_plot_filename}.{num_epochs}.png')
+        self.plot(list_epochs, losses, f'{self.graph_plot_filename}.e{num_epochs}.png')
         return list_epochs, losses
 
 

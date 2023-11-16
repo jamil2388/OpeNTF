@@ -58,11 +58,11 @@ class Graph:
         self.base_graph_emb_filename = params['storage']['base_graph_emb_filename']
         self.graph_preprocessed_output_folder = f'{self.base_folder}/preprocessed/{self.domain}/{self.data_version}'
         # need to add '{epoch_number}.pkl' while running at each set of epochs
-        self.graph_preprocessed_output_filename = f'{self.base_graph_emb_filename}.{self.model_name}.{self.graph_edge_type}'
+        self.graph_preprocessed_output_filename = f'{self.graph_preprocessed_output_folder}/{self.base_graph_emb_filename}.{self.model_name}.{self.graph_edge_type}'
 
         # need to add '{epoch_number}.png' while running at each set of epochs
         self.base_graph_plot_filename = params['storage']['base_graph_plot_filename']
-        self.graph_plot_filename = f'{self.base_graph_plot_filename}.{self.model_name}.{self.graph_edge_type}.'
+        self.graph_plot_filename = f'{self.graph_preprocessed_output_folder}/{self.base_graph_plot_filename}.{self.model_name}.{self.graph_edge_type}.'
         # -------------------------------------------
 
     # normalizr an np_array into a range of 0-1
@@ -95,11 +95,13 @@ class Graph:
         plt.xlim(0, len(x))
         plt.plot(x, y)
         plt.legend('This is a legend')
-        plt.show()
-
+        # save the figure before showing the plot
+        # because after plt.show() another blank figure is created
         if(output_filepath):
             print(f'Saving plot in {output_filepath}')
             plt.savefig(output_filepath)
+
+        plt.show()
 
     # for plotting data for multiple sets of epochs or something similar
     def multi_plot(self):

@@ -29,7 +29,7 @@ settings = {
                     'STEL' : {},
                 },
                 'model_params':{
-                    'max_epochs' : [100, 200],
+                    'max_epochs' : [200],
                     'embedding_dim' : 5,
                     'walk_length' : 6,
                     'context_size' : 3,
