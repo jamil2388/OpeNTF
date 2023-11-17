@@ -8,11 +8,10 @@ from src.misc import data_handler
 
 import os
 import torch
-from src.mdl import gnn_emb
 from torch_geometric.nn import MetaPath2Vec
 import numpy as np
 
-class Metapath2Vec(src.mdl.graph.Graph):
+class M2V(src.mdl.graph.Graph):
 
     # setup the entire model before running
     def __init__(self):
@@ -30,6 +29,7 @@ class Metapath2Vec(src.mdl.graph.Graph):
         model_params = self.params['model'][self.model_name]['model_params']
         self.shuffle = model_params['shuffle']
         self.metapath = model_params['metapath']
+        self.lr = model_params['lr']
 
     # this will load the desired graph data for running with the model
     def load(self, graph_datapath):
@@ -124,7 +124,7 @@ class Metapath2Vec(src.mdl.graph.Graph):
 
 
 def main():
-    m2v = Metapath2Vec()
+    m2v = M2V()
     m2v.run()
 
 if __name__ == '__main__':

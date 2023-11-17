@@ -15,8 +15,13 @@ settings = {
             'gat':{},
             'gin':{},
             'n2v':{
+                'edge_types' : {
+                    'EE' : {},
+                    'SS' : {},
+                    'TT' : {},
+                },
                 'model_params':{
-                    'max_epochs' : [100],
+                    'max_epochs' : [250],
                     'embedding_dim' : 5,
                     'walk_length' : 6,
                     'context_size' : 3,
@@ -24,11 +29,12 @@ settings = {
                     'num_negative_samples' : 1,
                     'p' : 1.0,
                     'q' : 1.0,
+                    'lr' : 0.01,
                 },
                 'loader_params' : {
                     'batch_size' : 5,
                     'loader_shuffle' : True,
-                    'num_workers' : 1,
+                    'num_workers' : 0,
                 }
             },
             'm2v':{
@@ -45,7 +51,7 @@ settings = {
                         ('skill','to','id'),
                         ('id', 'to', 'member'),
                     ],
-                    'max_epochs' : [10],
+                    'max_epochs' : [1],
                     'embedding_dim' : 5,
                     'walk_length' : 6,
                     'context_size' : 3,
@@ -92,8 +98,9 @@ settings = {
         'preprocessed_embedding_output_path' : '../../data/graph/preprocessed/dblp/toy.dblp.v12.json/metapath2vec/STE/teamsvecs_emb.pkl',
         'domain' : 'dblp',
         'dataset_version' : 'toy.dblp.v12.json',
-        'model' : 'metapath2vec',
+        'model' : 'm2v',
         'edge_type' : 'STE',
         'file_name' : 'teams_graph.pkl',
+        'model_index' : 4,
     }
 }

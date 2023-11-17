@@ -5,6 +5,7 @@ import graph_params
 from src.misc import data_handler
 from matplotlib import pyplot as plt
 import numpy as np
+import networkx as nx
 
 import math
 import os
@@ -29,10 +30,10 @@ class Graph:
         elif ('GIN' in str(self.__class__)):
             print(f'Model name is gin')
             self.model_name = 'gin'
-        elif ('Node2Vec' in str(self.__class__)):
+        elif ('N2V' in str(self.__class__)):
             print(f'Model name is n2v')
             self.model_name = 'n2v'
-        elif ('Metapath2Vec' in str(self.__class__)):
+        elif ('M2V' in str(self.__class__)):
             print(f'Model name is m2v')
             self.model_name = 'm2v'
 
@@ -48,7 +49,6 @@ class Graph:
         self.walks_per_node = model_params['walks_per_node']
         self.context_size = model_params['context_size']
         self.num_negative_samples = model_params['num_negative_samples']
-        self.lr = model_params['lr']
 
         # loader parameters
         loader_params = params['model'][self.model_name]['loader_params']
@@ -63,7 +63,8 @@ class Graph:
         self.data_versions = list(params['data']['domain'][self.domain].keys())
         self.data_version = self.data_versions[0]
         self.model_names = list(params['model'].keys())
-        self.graph_edge_types = list(params['model']['m2v']['edge_types'].keys())
+        # only for n2v, the edge_types will be E-E, S-S or T-T
+        self.graph_edge_types = list(params['model'][self.model_name]['edge_types'].keys())
         self.graph_edge_type = self.graph_edge_types[0]
 
         ### Locations ###
@@ -139,4 +140,16 @@ class Graph:
 
     # for plotting data for multiple sets of epochs or something similar
     def multi_plot(self):
+        pass
+
+    def plot_homogeneous_graph(self, teams_graph):
+        # make sure that the data given is a Data type object
+        assert type(teams_graph) == torch_geometric.data.Data
+
+        G = torch_geometric.utils.to_networkx(teams_graph, to_undirected=True)
+        nx.draw(G, with_labels=True)
+
+    def plot_heterogeneous_graph(self, teams_graph):
+        # make sure that the data given is a Data type object
+        assert type(teams_graph) == torch_geometric.data.hetero_data.HeteroData
         pass

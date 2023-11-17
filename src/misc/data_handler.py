@@ -39,6 +39,25 @@ def create_custom_data():
 
     return x, edge_index
 
+# the method to add edges of a particular edge_type to the edge_index
+def add_edges(visited_index, set_edge_index, key1, key2, col1, col2, dict_key, reverse_dict_key):
+    # mark the pair visited
+    visited_index[col1, col2, dict_key] = 1
+    visited_index[col2, col1, reverse_dict_key] = 1
+
+    # create 2 sets of edges between col1 and col2
+    # from col1 to col2, it should be edge_type 1,
+    # from col2 to col1, it should be reverse_edge_type
+    print(f'edge_index appended with edge pairs between n1 node {col1} and n2 node {col2}')
+    set_edge_index[key1, key2][0].append(col1)
+    set_edge_index[key1, key2][1].append(col2)
+    set_edge_index[key2, key1][0].append(col2)
+    set_edge_index[key2, key1][1].append(col1)
+    print(f'updated edge_index = {set_edge_index[key1, key2]}')
+    print(f'updated reverse_edge_index = {set_edge_index[key2, key1]}')
+
+    return set_edge_index
+
 # generate a graph based on the sparse matrix data (e.g: teamsvecs.pkl)
 # the generated graph will be saved as pickle for use in multiple models
 # also this method will return the graph data as a variable
@@ -294,8 +313,8 @@ if __name__ == "__main__":
     data_versions = list(params['data']['domain'][domain].keys())
     data_version = data_versions[0]
     model_names = list(params['model'].keys())
-    model_name = model_names[5]
-    graph_edge_types = list(params['model']['m2v']['edge_types'].keys())
+    model_name = model_names[params['misc']['model_index']]
+    graph_edge_types = list(params['model'][model_name]['edge_types'].keys())
     graph_edge_type = graph_edge_types[0]
     # file names, in the base name, the details of the versions and models will be added
     sparse_matrix_file_name = 'teamsvecs.pkl'
@@ -327,10 +346,10 @@ if __name__ == "__main__":
     teamsvecs = read_data(teamsvecs_input_filepath)
 
     # the graph will be made based on the mentioned node_types
-    # create_graph(teamsvecs, ['member'], teams_graph_output_filepath)
-    create_heterogeneous_graph(teamsvecs, ['id', 'skill', 'member'], \
-                               [['skill', 'id'], ['id', 'skill'], ['id', 'member'], ['member', 'id']], \
-                               teams_graph_output_filepath)
+    create_graph(teamsvecs, ['member'], teams_graph_output_filepath)
+    # create_heterogeneous_graph(teamsvecs, ['id', 'skill', 'member'], \
+    #                            [['skill', 'id'], ['id', 'skill'], ['id', 'member'], ['member', 'id']], \
+    #                            teams_graph_output_filepath)
     teams_graph = load_graph(teams_graph_input_filepath)
 
     print(teams_graph.__dict__)
