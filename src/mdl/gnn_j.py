@@ -1,4 +1,5 @@
 import torch
+import torch_geometric.utils
 from torch import Tensor
 import os
 from torch_geometric.data import download_url, extract_zip
@@ -8,11 +9,14 @@ import torch_geometric.transforms as T
 from torch_geometric.loader import LinkNeighborLoader
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
+import torch_geometric.transforms as T
 
 # draw any graph
 def draw_graph(G):
 
-    nx.draw(G, node_color = "red", node_size = 1000,)
+    G = torch_geometric.utils.to_networkx(G.to_homogeneous())
+    nx.draw(G, node_color = "red", node_size = 1000, with_labels = True)
     plt.margins(0.5)
     plt.show()
 
@@ -132,6 +136,41 @@ def create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie):
 
     return data
 
+# create a custom data here
+def create_custom_data():
+
+    data = HeteroData()
+
+    num_user = 4
+    num_movie = 7
+
+    # create
+    data["user"].node_id = torch.arange(start = 1, end = num_user + 1, step = 1)
+    data["movie"].node_id = torch.arange(start = 1, end = num_movie + 1, step = 1)
+    print(f'data["user"].num_nodes = {data["user"].num_nodes}')
+    print(f'data["movie"].num_nodes = {data["movie"].num_nodes}')
+    print(f'data["movie"].node_id = {data["user"].node_id}')
+    print(f'data["movie"].node_id = {data["movie"].node_id}')
+
+    # define edges
+    # urm = user rates movie
+    # urrm = user rev_rates movie
+    urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
+                      [2, 3], [2, 5], [2, 6], \
+                      [3, 3], [3, 4],  \
+                      [4, 1], [4, 5], [4, 7]], dtype = torch.long)
+    data["user", "rates", "movie"].edge_index = urm_edge_index.t().contiguous()
+    print(f'data["user", "rates", "movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
+    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
+
+    # make the graph undirected
+    data = T.ToUndirected()(data)
+
+    # review the created data
+    print(f'data = {data}')
+
+    return data
+
 # ignore when you have custom data
 def data_assertions(data):
     assert data.node_types == ["user", "movie"]
@@ -173,10 +212,10 @@ def define_splits(data):
     # Negative edges during training will be generated on-the-fly.
     # We can leverage the `RandomLinkSplit()` transform for this from PyG:
     transform = T.RandomLinkSplit(
-        num_val=0.1,
+        num_val=0.0,
         num_test=0.1,
-        disjoint_train_ratio=0.3,
-        neg_sampling_ratio=2.0,
+        disjoint_train_ratio=0.0,
+        neg_sampling_ratio=1.0,
         add_negative_train_samples=False,
         edge_types=("user", "rates", "movie"),
         rev_edge_types=("movie", "rev_rates", "user"),
@@ -184,11 +223,11 @@ def define_splits(data):
 
     print(f'---------------Before Transform-------------')
     print()
-    print(f'data[\'user\'] = {data["user"].num_nodes}')
-    print(f'data[\'movie\'] = {data["movie"].num_nodes}')
+    print(f'data["user"] = {data["user"].num_nodes}')
+    print(f'data["movie"] = {data["movie"].num_nodes}')
     print(f'data["user","rates","movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
     print(f'data["user","rates","movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    print(f'data["movie","rev_rates","user"].num_edges = {data["movie", "rev_rates", "user"].num_edges}')
+    print(f'data["movie", "rev_rates", "user"].num_edges = {data["movie", "rev_rates", "user"].num_edges}')
 
     train_data, val_data, test_data = transform(data)
 
@@ -198,19 +237,30 @@ def define_splits(data):
     print("Training data:")
     print("==============")
     print(train_data)
+    print(f'........................................')
+    # the edges for supervision
+    print(f'train_data.edge_label_index and edge_index')
     print(train_data["user", "rates", "movie"].edge_label_index)
     print(train_data["user", "rates", "movie"].edge_index)
+    print(f'........................................')
     print()
     print("Validation data:")
     print("================")
+    print(f'val_data.edge_label_index and edge_index')
     print(val_data["user", "rates", "movie"].edge_label_index)
+    print(val_data["user", "rates", "movie"].edge_index)
+    print(f'........................................')
+    print()
+    print(f'test_data.edge_label_index and edge_index')
+    print(test_data["user", "rates", "movie"].edge_label_index)
+    print(test_data["user", "rates", "movie"].edge_index)
 
     print(f'-------------------------------------------')
     print(f'counts')
-    print(f'train_data.count = {train_data["user", "rates", "movie"].num_edges}')
-    print(f'train_data.reverse.count = {train_data["movie", "rev_rates", "user"].num_edges}')
-    print(f'validation_data.count = {val_data["user", "rates", "movie"].num_edges}')
-    print(f'test_data.count = {test_data["user", "rates", "movie"].num_edges}')
+    print(f'train_data.num_edges = {train_data["user", "rates", "movie"].num_edges}')
+    print(f'train_data.reverse.num_edges = {train_data["movie", "rev_rates", "user"].num_edges}')
+    print(f'validation_data.num_edges = {val_data["user", "rates", "movie"].num_edges}')
+    print(f'test_data.num_edges = {test_data["user", "rates", "movie"].num_edges}')
 
 def create_mini_batch_loader():
     # In the first hop, we sample at most 20 neighbors.
@@ -254,7 +304,7 @@ if __name__ == '__main__':
     ratings_df = select_data_subset(ratings_df)
 
     movie_feat = extract_features(movies_df)
-    assert movie_feat.size() == (9742, 20)  # 20 genres in total.
+    ### assert movie_feat.size() == (9742, 20)  # 20 genres in total.
 
     unique_user_id, unique_movie_id = create_unique_mapping(movies_df, ratings_df)
     # these dfs will now point to mappedIDs
@@ -263,13 +313,14 @@ if __name__ == '__main__':
     # With this, we are ready to construct our `edge_index` in COO format
     # following PyG semantics:
     edge_index_user_to_movie = torch.stack([ratings_user_id, ratings_movie_id], dim=0)
-    assert edge_index_user_to_movie.size() == (2, 100836)
+    ### assert edge_index_user_to_movie.size() == (2, 100836)
 
     # "user", "movie", "user-rates-movie"
-    data = create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie)
+    # data = create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie)
+    data = create_custom_data()
 
-    # draw the graph
-    draw_graph(data)
+    # # draw the graph
+    # draw_graph(data)
 
     train_data, val_data, test_data = define_splits(data)
 
