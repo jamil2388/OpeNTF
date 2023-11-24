@@ -4,7 +4,7 @@ from torch import Tensor
 import os
 from torch_geometric.data import download_url, extract_zip
 import pandas as pd
-from torch_geometric.data import HeteroData
+from torch_geometric.data import HeteroData, Data
 import torch_geometric.transforms as T
 from torch_geometric.loader import LinkNeighborLoader
 import networkx as nx
@@ -136,8 +136,40 @@ def create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie):
 
     return data
 
-# create a custom data here
-def create_custom_data():
+def create_custom_homogeneous_data():
+    data = Data()
+
+    num_nodes = 8
+
+    # create
+    data.node_id = torch.arange(start=1, end=num_nodes + 1, step=1)
+    print(f'data.num_nodes = {data.num_nodes}')
+
+    # define edges u to m
+    edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], [1, 3], \
+                                   [2, 3], [2, 5], [2, 6], \
+                                   [3, 3], [3, 4], \
+                                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype=torch.long)
+    # optional edge_weight
+    edge_weight = torch.zeros((edge_index.shape[0],))
+    edge_weight[3] = 1
+
+    data.edge_index = edge_index.t().contiguous()
+    data.edge_weight = edge_weight
+    print(f'data.num_edges = {data.num_edges}')
+    print(f'data.edge_index = {data.edge_index}')
+
+    # make the graph undirected, generate reverse edges
+    # data = T.ToUndirected()(data)
+
+    # review the created data
+    print(f'data = {data}')
+
+    data.validate(raise_on_error = True)
+    return data
+
+# create a custom heterogeneous data here
+def create_custom_heterogeneous_data():
 
     data = HeteroData()
 
@@ -145,8 +177,8 @@ def create_custom_data():
     num_movie = 7
 
     # create
-    data["user"].node_id = torch.arange(start = 1, end = num_user + 1, step = 1)
-    data["movie"].node_id = torch.arange(start = 1, end = num_movie + 1, step = 1)
+    data["user"].node_id = torch.arange(start = 0, end = num_user, step = 1)
+    data["movie"].node_id = torch.arange(start = 0, end = num_movie, step = 1)
     print(f'data["user"].num_nodes = {data["user"].num_nodes}')
     print(f'data["movie"].num_nodes = {data["movie"].num_nodes}')
     print(f'data["movie"].node_id = {data["user"].node_id}')
@@ -155,13 +187,24 @@ def create_custom_data():
     # define edges
     # urm = user rates movie
     # urrm = user rev_rates movie
+    # urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
+    #                   [2, 3], [2, 5], [2, 6], \
+    #                   [3, 3], [3, 4],  \
+    #                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
     urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
                       [2, 3], [2, 5], [2, 6], \
                       [3, 3], [3, 4],  \
-                      [4, 1], [4, 5], [4, 7]], dtype = torch.long)
+                      [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
+    urm_edge_index -= 1
+    # optional weight matrix
+    urm_edge_weight = torch.zeros((1, urm_edge_index.shape[0]))
+    # urm_edge_weight[0, 2] = 1
+    # urm_edge_weight[0, 8] = 1
     data["user", "rates", "movie"].edge_index = urm_edge_index.t().contiguous()
+    data["user", "rates", "movie"].edge_weight = urm_edge_weight
     print(f'data["user", "rates", "movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
+    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index.t()}')
+    print(f'data["user", "rates", "movie"].edge_weight = {data["user", "rates", "movie"].edge_weight}')
 
     # make the graph undirected
     data = T.ToUndirected()(data)
@@ -169,7 +212,25 @@ def create_custom_data():
     # review the created data
     print(f'data = {data}')
 
+    data.validate(raise_on_error = True)
     return data
+
+# check the characteristics of the splits
+def validate_splits(train_data, val_data, test_data):
+    print()
+    print(f'-------------------Checking the Splits-----------------------')
+    print()
+    print(f'The splits are : \n')
+    print(f'Train Data : \n{train_data}')
+    print(f'Val Data : \n{val_data}')
+    print(f'Test Data : \n{test_data}')
+
+    # convert to df to compare the overlaps
+    train_df = pd.DataFrame(train_data.numpy())
+    val_df = pd.DataFrame(val_data.numpy())
+    test_df = pd.DataFrame(test_data.numpy())
+
+    train_test_df = pd.merge(train_df, test_df, how = 'inner', on = train_data.columns)
 
 # ignore when you have custom data
 def data_assertions(data):
@@ -212,10 +273,10 @@ def define_splits(data):
     # Negative edges during training will be generated on-the-fly.
     # We can leverage the `RandomLinkSplit()` transform for this from PyG:
     transform = T.RandomLinkSplit(
-        num_val=0.0,
-        num_test=0.1,
+        num_val=0.1,
+        num_test=0.5,
         disjoint_train_ratio=0.0,
-        neg_sampling_ratio=1.0,
+        neg_sampling_ratio=0.0,
         add_negative_train_samples=False,
         edge_types=("user", "rates", "movie"),
         rev_edge_types=("movie", "rev_rates", "user"),
@@ -261,6 +322,8 @@ def define_splits(data):
     print(f'train_data.reverse.num_edges = {train_data["movie", "rev_rates", "user"].num_edges}')
     print(f'validation_data.num_edges = {val_data["user", "rates", "movie"].num_edges}')
     print(f'test_data.num_edges = {test_data["user", "rates", "movie"].num_edges}')
+
+    return train_data, val_data, test_data
 
 def create_mini_batch_loader():
     # In the first hop, we sample at most 20 neighbors.
@@ -317,12 +380,14 @@ if __name__ == '__main__':
 
     # "user", "movie", "user-rates-movie"
     # data = create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie)
-    data = create_custom_data()
+    homogeneous_data = create_custom_homogeneous_data()
+    heterogeneous_data = create_custom_heterogeneous_data()
 
     # # draw the graph
     # draw_graph(data)
 
-    train_data, val_data, test_data = define_splits(data)
+    train_data, val_data, test_data = define_splits(homogeneous_data)
+    validate_splits(train_data, val_data, test_data)
 
 
 
