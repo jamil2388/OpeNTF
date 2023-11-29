@@ -11,6 +11,16 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import torch_geometric.transforms as T
+import torch.nn.functional as F
+from src.mdl.graph_sage import Model
+import tqdm as tqdm
+
+
+'''
+Class definitions
+'''
+
+
 
 # draw any graph
 def draw_graph(G):
@@ -146,7 +156,7 @@ def create_custom_homogeneous_data():
     print(f'data.num_nodes = {data.num_nodes}')
 
     # define edges u to m
-    edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], [1, 3], \
+    edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
                                    [2, 3], [2, 5], [2, 6], \
                                    [3, 3], [3, 4], \
                                    [4, 1], [4, 2], [4, 5], [4, 7]], dtype=torch.long)
@@ -154,6 +164,7 @@ def create_custom_homogeneous_data():
     edge_weight = torch.zeros((edge_index.shape[0],))
     edge_weight[3] = 1
 
+    data.x = torch.tensor([[0]] * data.num_nodes, dtype = torch.float)
     data.edge_index = edge_index.t().contiguous()
     data.edge_weight = edge_weight
     print(f'data.num_edges = {data.num_edges}')
@@ -179,6 +190,10 @@ def create_custom_heterogeneous_data():
     # create
     data["user"].node_id = torch.arange(start = 0, end = num_user, step = 1)
     data["movie"].node_id = torch.arange(start = 0, end = num_movie, step = 1)
+
+    for node_type in data.node_types:
+        data[node_type].x = torch.tensor([[0]] * data[node_type].num_nodes, dtype = torch.float)
+
     print(f'data["user"].num_nodes = {data["user"].num_nodes}')
     print(f'data["movie"].num_nodes = {data["movie"].num_nodes}')
     print(f'data["movie"].node_id = {data["user"].node_id}')
@@ -195,16 +210,25 @@ def create_custom_heterogeneous_data():
                       [2, 3], [2, 5], [2, 6], \
                       [3, 3], [3, 4],  \
                       [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
+    uhm_edge_index = torch.tensor([[1, 6], [1, 3], [1, 5], \
+                      [2, 3], [2, 5], [2, 6], [2, 1],\
+                      [3, 3], [3, 4],  \
+                      [4, 1], [4, 3], [4, 5], [4, 7]], dtype = torch.long)
     urm_edge_index -= 1
+    uhm_edge_index -= 1
+
     # optional weight matrix
-    urm_edge_weight = torch.zeros((1, urm_edge_index.shape[0]))
-    # urm_edge_weight[0, 2] = 1
-    # urm_edge_weight[0, 8] = 1
+    urm_edge_attr = torch.ones((urm_edge_index.shape[0], 1))
+    uhm_edge_attr = torch.ones((uhm_edge_index.shape[0], 1))
+
     data["user", "rates", "movie"].edge_index = urm_edge_index.t().contiguous()
-    data["user", "rates", "movie"].edge_weight = urm_edge_weight
+    data["user", "hates", "movie"].edge_index = uhm_edge_index.t().contiguous()
+    data["user", "rates", "movie"].edge_attr = urm_edge_attr
+    data["user", "hates", "movie"].edge_attr = uhm_edge_attr
+
     print(f'data["user", "rates", "movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index.t()}')
-    print(f'data["user", "rates", "movie"].edge_weight = {data["user", "rates", "movie"].edge_weight}')
+    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
+    print(f'data["user", "rates", "movie"].urm_edge_attr = {data["user", "rates", "movie"].edge_attr}')
 
     # make the graph undirected
     data = T.ToUndirected()(data)
@@ -225,12 +249,13 @@ def validate_splits(train_data, val_data, test_data):
     print(f'Val Data : \n{val_data}')
     print(f'Test Data : \n{test_data}')
 
-    # convert to df to compare the overlaps
-    train_df = pd.DataFrame(train_data.numpy())
-    val_df = pd.DataFrame(val_data.numpy())
-    test_df = pd.DataFrame(test_data.numpy())
+    if(type(train_data) == torch_geometric.data.Data):
+        # convert to df to compare the overlaps
+        train_df = pd.DataFrame(train_data.numpy())
+        val_df = pd.DataFrame(val_data.numpy())
+        test_df = pd.DataFrame(test_data.numpy())
 
-    train_test_df = pd.merge(train_df, test_df, how = 'inner', on = train_data.columns)
+        train_test_df = pd.merge(train_df, test_df, how = 'inner', on = train_data.columns)
 
 # ignore when you have custom data
 def data_assertions(data):
@@ -272,14 +297,30 @@ def define_splits(data):
     # We further want to generate fixed negative edges for evaluation with a ratio of 2:1.
     # Negative edges during training will be generated on-the-fly.
     # We can leverage the `RandomLinkSplit()` transform for this from PyG:
+
+    if(type(data) == torch_geometric.data.HeteroData):
+        num_edge_types = len(data.edge_types)
+
+        # directed graph means we dont have any reverse edges
+        if(data.is_directed()):
+            edge_types = data.edge_types
+            rev_edge_types = None
+        else :
+            edge_types = data.edge_types[:num_edge_types // 2]
+            rev_edge_types = data.edge_types[num_edge_types // 2:]
+    else:
+        edge_types = None
+        rev_edge_types = None
+
+
     transform = T.RandomLinkSplit(
         num_val=0.1,
-        num_test=0.5,
-        disjoint_train_ratio=0.0,
-        neg_sampling_ratio=0.0,
+        num_test=0.1,
+        disjoint_train_ratio=0.3,
+        neg_sampling_ratio=1.0,
         add_negative_train_samples=False,
-        edge_types=("user", "rates", "movie"),
-        rev_edge_types=("movie", "rev_rates", "user"),
+        edge_types= edge_types,
+        rev_edge_types=rev_edge_types,
     )
 
     print(f'---------------Before Transform-------------')
@@ -325,7 +366,7 @@ def define_splits(data):
 
     return train_data, val_data, test_data
 
-def create_mini_batch_loader():
+def create_mini_batch_loader(data):
     # In the first hop, we sample at most 20 neighbors.
     # In the second hop, we sample at most 10 neighbors.
     # In addition, during training, we want to sample negative edges on-the-fly with
@@ -337,26 +378,59 @@ def create_mini_batch_loader():
     edge_label = train_data["user", "rates", "movie"].edge_label
     print(f'edge_label stuffs : {edge_label_index}, {edge_label}')
 
-    train_loader = LinkNeighborLoader(
-        data=train_data,
-        num_neighbors=[20, 10],
-        neg_sampling_ratio=2.0,
+    mini_batch_loader = LinkNeighborLoader(
+        data=data,
+        num_neighbors=[1, 1],
+        neg_sampling_ratio=1.0,
         edge_label_index=(("user", "rates", "movie"), edge_label_index),
         edge_label=edge_label,
-        batch_size=128,
+        batch_size=3,
         shuffle=True,
     )
 
     # Inspect a sample:
-    sampled_data = next(iter(train_loader))
+    # sampled_data = next(iter(train_loader))
+    # for i, data in enumerate(train_loader):
+    #     print(f'sample data for iteration : {i}')
+    #     print(data)
+    #     print(f'---------------------------------------\n')
 
-    print("Sampled mini-batch:")
-    print("===================")
-    print(sampled_data.to_dict().keys())
-    print(f'sampled_data["user"].num_nodes = {sampled_data["user"].num_nodes}')
-    print(f'sampled_data["movie"].num_nodes = {sampled_data["movie"].num_nodes}')
-    print(f'sampled_data["edge1"].num_nodes = {sampled_data["user", "rates", "movie"].num_edges}')
+    # print("Sampled mini-batch:")
+    # print("===================")
+    # print(sampled_data.to_dict().keys())
+    # print(f'sampled_data["user"].num_nodes = {sampled_data["user"].num_nodes}')
+    # print(f'sampled_data["movie"].num_nodes = {sampled_data["movie"].num_nodes}')
+    # print(f'sampled_data["edge1"].num_nodes = {sampled_data["user", "rates", "movie"].num_edges}')
+    return mini_batch_loader
 
+def create():
+
+    model = Model(hidden_channels=10, data = train_data)
+    print(model)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: '{device}'")
+
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    return model,optimizer
+
+def learn(train_loader):
+    for epoch in range(1, 3):
+        total_loss = total_examples = 0
+        for sampled_data in tqdm.tqdm(train_loader):
+            optimizer.zero_grad()
+
+            sampled_data.to(device)
+            pred = model(sampled_data)
+
+            ground_truth = sampled_data["user", "rates", "movie"].edge_label
+            loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+
+            loss.backward()
+            optimizer.step()
+            total_loss += float(loss) * pred.numel()
+            total_examples += pred.numel()
 
 if __name__ == '__main__':
 
@@ -386,9 +460,17 @@ if __name__ == '__main__':
     # # draw the graph
     # draw_graph(data)
 
-    train_data, val_data, test_data = define_splits(homogeneous_data)
+    # train_data, val_data, test_data = define_splits(homogeneous_data)
+    train_data, val_data, test_data = define_splits(heterogeneous_data)
     validate_splits(train_data, val_data, test_data)
 
+    train_loader = create_mini_batch_loader(train_data)
+    val_loader = create_mini_batch_loader(val_data)
+    test_loader = create_mini_batch_loader(test_data)
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: '{device}'")
 
+    model,optimizer = create()
+    learn(train_loader)
 
