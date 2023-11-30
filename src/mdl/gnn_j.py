@@ -412,13 +412,14 @@ def create():
     print(f"Device: '{device}'")
 
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     return model,optimizer
 
 def learn(train_loader):
-    for epoch in range(1, 20):
+    for epoch in range(1, 100):
         total_loss = total_examples = 0
-        for sampled_data in tqdm.tqdm(train_loader):
+        print(f'epoch = {epoch}')
+        for sampled_data in train_loader:
             optimizer.zero_grad()
 
             sampled_data.to(device)
@@ -431,17 +432,16 @@ def learn(train_loader):
             optimizer.step()
             total_loss += float(loss) * pred.numel()
             total_examples += pred.numel()
-        print(f'epoch = {epoch}')
-        print(f'loss = {loss}')
-        print(f'total_examples = {total_examples}')
-        print(f'total_loss = {total_loss}')
+            # print(f'loss = {loss}')
+        # print(f'epoch = {epoch}')
+        # print(f'loss = {loss}')
+        # print(f'total_examples = {total_examples}')
+        # print(f'total_loss = {total_loss}')
         # validation part here maybe ?
-        auc = eval(val_loader)
-        print(f'validation auc = {auc:.4f}')
-    return model
+        if epoch % 10 == 0 :
+            auc = eval(val_loader)
+            print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
-def epoch_sampler():
-    return
 
 # loader can be test or can be validation
 def eval(loader):
@@ -500,7 +500,5 @@ if __name__ == '__main__':
     print(f"Device: '{device}'")
 
     model,optimizer = create()
-    model2 = learn(train_loader)
-    assert model.user_emb() == model2.user_emb()
-    assert model.movie_emb() == model2.movie_emb()
+    learn(train_loader)
     eval(test_loader)

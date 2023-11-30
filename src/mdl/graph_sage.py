@@ -56,9 +56,6 @@ class Model(torch.nn.Module):
 
     def forward(self, data: HeteroData) -> Tensor:
 
-        # line for debug
-        tmp = self.user_emb(data["user"].node_id)
-
         x_dict = {
             # previously, the lin layer was ignored because of not having any features, we can still ignore it now
             "user": self.user_lin(data["user"].x) + self.user_emb(data["user"].node_id),
