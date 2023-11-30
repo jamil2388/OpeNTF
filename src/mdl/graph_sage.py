@@ -36,6 +36,7 @@ class Model(torch.nn.Module):
         # Since the dataset does not come with rich features, we also learn two
         # embedding matrices for users and movies:
         self.movie_lin = torch.nn.Linear(20, hidden_channels)
+        # the embeddings of the node_types
         self.user_emb = torch.nn.Embedding(data["user"].num_nodes, hidden_channels)
         self.movie_emb = torch.nn.Embedding(data["movie"].num_nodes, hidden_channels)
 
@@ -49,8 +50,10 @@ class Model(torch.nn.Module):
 
     def forward(self, data: HeteroData) -> Tensor:
         x_dict = {
-          "user": self.user_emb(data["user"].node_id),
-          "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
+            "user": self.user_emb(data["user"].node_id),
+            # the feature x conversion part with movie_lin should be revisited
+            # "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
+            "movie":  self.movie_emb(data["movie"].node_id),
         }
 
         # `x_dict` holds feature matrices of all node types

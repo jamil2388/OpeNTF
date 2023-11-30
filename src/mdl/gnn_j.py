@@ -14,7 +14,7 @@ import torch_geometric.transforms as T
 import torch.nn.functional as F
 from src.mdl.graph_sage import Model
 import tqdm as tqdm
-
+from sklearn.metrics import roc_auc_score
 
 '''
 Class definitions
@@ -416,7 +416,7 @@ def create():
     return model,optimizer
 
 def learn(train_loader):
-    for epoch in range(1, 3):
+    for epoch in range(1, 5):
         total_loss = total_examples = 0
         for sampled_data in tqdm.tqdm(train_loader):
             optimizer.zero_grad()
@@ -431,6 +431,25 @@ def learn(train_loader):
             optimizer.step()
             total_loss += float(loss) * pred.numel()
             total_examples += pred.numel()
+            print(f'epoch = {epoch}')
+            print(f'loss = {loss}')
+            print(f'total_examples = {total_examples}')
+            print(f'total_loss = {total_loss}')
+
+def eval():
+    preds = []
+    ground_truths = []
+    for sampled_data in tqdm.tqdm(val_loader):
+        with torch.no_grad():
+            sampled_data.to(device)
+            preds.append(model(sampled_data))
+            ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
+
+    pred = torch.cat(preds, dim=0).cpu().numpy()
+    ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
+    auc = roc_auc_score(ground_truth, pred)
+    print()
+    print(f"Validation AUC: {auc:.4f}")
 
 if __name__ == '__main__':
 
@@ -473,4 +492,4 @@ if __name__ == '__main__':
 
     model,optimizer = create()
     learn(train_loader)
-
+    eval()
