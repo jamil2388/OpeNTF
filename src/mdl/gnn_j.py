@@ -416,7 +416,7 @@ def create():
     return model,optimizer
 
 def learn(train_loader):
-    for epoch in range(1, 5):
+    for epoch in range(1, 20):
         total_loss = total_examples = 0
         for sampled_data in tqdm.tqdm(train_loader):
             optimizer.zero_grad()
@@ -431,15 +431,23 @@ def learn(train_loader):
             optimizer.step()
             total_loss += float(loss) * pred.numel()
             total_examples += pred.numel()
-            print(f'epoch = {epoch}')
-            print(f'loss = {loss}')
-            print(f'total_examples = {total_examples}')
-            print(f'total_loss = {total_loss}')
+        print(f'epoch = {epoch}')
+        print(f'loss = {loss}')
+        print(f'total_examples = {total_examples}')
+        print(f'total_loss = {total_loss}')
+        # validation part here maybe ?
+        auc = eval(val_loader)
+        print(f'validation auc = {auc:.4f}')
+    return model
 
-def eval():
+def epoch_sampler():
+    return
+
+# loader can be test or can be validation
+def eval(loader):
     preds = []
     ground_truths = []
-    for sampled_data in tqdm.tqdm(val_loader):
+    for sampled_data in tqdm.tqdm(loader):
         with torch.no_grad():
             sampled_data.to(device)
             preds.append(model(sampled_data))
@@ -449,7 +457,8 @@ def eval():
     ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
     auc = roc_auc_score(ground_truth, pred)
     print()
-    print(f"Validation AUC: {auc:.4f}")
+    print(f"AUC: {auc:.4f}")
+    return auc
 
 if __name__ == '__main__':
 
@@ -491,5 +500,7 @@ if __name__ == '__main__':
     print(f"Device: '{device}'")
 
     model,optimizer = create()
-    learn(train_loader)
-    eval()
+    model2 = learn(train_loader)
+    assert model.user_emb() == model2.user_emb()
+    assert model.movie_emb() == model2.movie_emb()
+    eval(test_loader)

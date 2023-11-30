@@ -35,30 +35,42 @@ class Model(torch.nn.Module):
         super().__init__()
         # Since the dataset does not come with rich features, we also learn two
         # embedding matrices for users and movies:
-        self.movie_lin = torch.nn.Linear(20, hidden_channels)
+
+        # self.movie_lin = torch.nn.Linear(20, hidden_channels)
+        # this edit is due to the fact that the input size of the linear layer transform is equal
+        # to the number of features in x
+        self.user_lin = torch.nn.Linear(data['user'].num_features, hidden_channels)
+        self.movie_lin = torch.nn.Linear(data['movie'].num_features, hidden_channels)
+
         # the embeddings of the node_types
         self.user_emb = torch.nn.Embedding(data["user"].num_nodes, hidden_channels)
         self.movie_emb = torch.nn.Embedding(data["movie"].num_nodes, hidden_channels)
 
-        # Instantiate homogeneous GNN:
-        self.gnn = GS(hidden_channels)
+        # Instantiate homogeneous gs:
+        self.gs = GS(hidden_channels)
 
-        # Convert GNN model into a heterogeneous variant:
-        self.gnn = to_hetero(self.gnn, metadata=data.metadata())
+        # Convert gs model into a heterogeneous variant:
+        self.gs = to_hetero(self.gs, metadata=data.metadata())
 
         self.classifier = Classifier()
 
     def forward(self, data: HeteroData) -> Tensor:
+
+        # line for debug
+        tmp = self.user_emb(data["user"].node_id)
+
         x_dict = {
-            "user": self.user_emb(data["user"].node_id),
+            # previously, the lin layer was ignored because of not having any features, we can still ignore it now
+            "user": self.user_lin(data["user"].x) + self.user_emb(data["user"].node_id),
             # the feature x conversion part with movie_lin should be revisited
-            # "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
-            "movie":  self.movie_emb(data["movie"].node_id),
+            "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
+            # "movie": self.movie_lin(data["movie"].x),
+            # "movie":  self.movie_emb(data["movie"].node_id),
         }
 
         # `x_dict` holds feature matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
-        x_dict = self.gnn(x_dict, data.edge_index_dict)
+        x_dict = self.gs(x_dict, data.edge_index_dict)
         pred = self.classifier(
             x_dict["user"],
             x_dict["movie"],
