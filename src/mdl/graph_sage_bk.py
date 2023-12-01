@@ -19,8 +19,6 @@ class GS(torch.nn.Module):
 # Our final classifier applies the dot-product between source and destination
 # node embeddings to derive edge-level predictions:
 class Classifier(torch.nn.Module):
-    # all the node types and edge_label_indices of all edge_types will be passed
-    # we have to calculate the predictions based on all combinations
     def forward(self, x_user: Tensor, x_movie: Tensor, edge_label_index: Tensor) -> Tensor:
         # Convert node embeddings to edge-level representations:
         edge_feat_user = x_user[edge_label_index[0]]
@@ -35,19 +33,17 @@ class Model(torch.nn.Module):
     # need to verify whether in inductive training we pass the entire data info here
     def __init__(self, hidden_channels, data):
         super().__init__()
-        if(type(data) == HeteroData):
-            self.node_lin = []
-            self.node_emb = []
-            # for each node_type
-            node_types = data.node_types
-            # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
-            # these two are generated such that both of them has the same shape and they can be added together
-            for i, node_type in enumerate(node_types):
-                self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
-                self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
-        else:
-            self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
-            self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
+        # Since the dataset does not come with rich features, we also learn two
+        # embedding matrices for users and movies:
+        # self.movie_lin = torch.nn.Linear(20, hidden_channels)
+        # this edit is due to the fact that the input size of the linear layer transform is equal
+        # to the number of features in x
+        self.user_lin = torch.nn.Linear(data['user'].num_features, hidden_channels)
+        self.movie_lin = torch.nn.Linear(data['movie'].num_features, hidden_channels)
+
+        # the embeddings of the node_types
+        self.user_emb = torch.nn.Embedding(data["user"].num_nodes, hidden_channels)
+        self.movie_emb = torch.nn.Embedding(data["movie"].num_nodes, hidden_channels)
 
         # Instantiate homogeneous gs:
         self.gs = GS(hidden_channels)
@@ -59,11 +55,6 @@ class Model(torch.nn.Module):
         self.classifier = Classifier()
 
     def forward(self, data: HeteroData) -> Tensor:
-
-        for node_type in data.node_types:
-
-        for edge_type in data.edge_types:
-
 
         x_dict = {
             # previously, the lin layer was ignored because of not having any features, we can still ignore it now
@@ -77,6 +68,10 @@ class Model(torch.nn.Module):
         # `x_dict` holds feature matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
         x_dict = self.gs(x_dict, data.edge_index_dict)
-        pred.append(self.classifier(x_dict["source"], x_dict["dest"], data["user", "rates", "movie"].edge_label_index,))
+        pred = self.classifier(
+            x_dict["user"],
+            x_dict["movie"],
+            data["user", "rates", "movie"].edge_label_index,
+        )
 
         return pred

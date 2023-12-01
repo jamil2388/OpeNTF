@@ -4,15 +4,16 @@ from torch import Tensor
 import os
 from torch_geometric.data import download_url, extract_zip
 import pandas as pd
+import pickle
 from torch_geometric.data import HeteroData, Data
-import torch_geometric.transforms as T
 from torch_geometric.loader import LinkNeighborLoader
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import torch_geometric.transforms as T
 import torch.nn.functional as F
-from src.mdl.graph_sage import Model
+from src.mdl.graph_sage import Model as Model
+from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 from sklearn.metrics import roc_auc_score
 
@@ -144,6 +145,21 @@ def create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie):
     # assertion checks
     data_assertions(data)
 
+    return data
+
+# load previously written graph files
+def load_data(filepath):
+
+    print(f'Load Data')
+    print('------------------------------------------')
+    print()
+
+
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
+
+    print(f'filepath : {filepath}')
+    print(data)
     return data
 
 def create_custom_homogeneous_data():
@@ -381,20 +397,20 @@ def create_mini_batch_loader(data):
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
-        num_neighbors=[1, 1],
+        num_neighbors=[10, 10],
         neg_sampling_ratio=1.0,
         edge_label_index = edge_label_index_tuple,
         edge_label = edge_label,
-        batch_size=3,
+        batch_size=32,
         shuffle=True,
     )
 
     # Inspect a sample:
     # sampled_data = next(iter(train_loader))
-    # for i, data in enumerate(train_loader):
-    #     print(f'sample data for iteration : {i}')
-    #     print(data)
-    #     print(f'---------------------------------------\n')
+    for i, data in enumerate(mini_batch_loader):
+        print(f'sample data for iteration : {i}')
+        print(data)
+        print(f'---------------------------------------\n')
 
     # print("Sampled mini-batch:")
     # print("===================")
@@ -406,14 +422,15 @@ def create_mini_batch_loader(data):
 
 def create():
 
-    model = Model(hidden_channels=10, data = train_data)
+    # model = Model(hidden_channels=10, data = train_data)
+    model = Model_bk(hidden_channels=10, data = train_data)
     print(model)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: '{device}'")
 
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     return model,optimizer
 
 def learn(train_loader):
@@ -463,34 +480,39 @@ def eval(loader):
 
 if __name__ == '__main__':
 
-    # load data
-    movies_df, ratings_df = load_data('../../data/graph/raw/')
-    # backup of the main df
-    ratings_df_main = ratings_df
-    ratings_df = select_data_subset(ratings_df)
-
-    movie_feat = extract_features(movies_df)
-    ### assert movie_feat.size() == (9742, 20)  # 20 genres in total.
-
-    unique_user_id, unique_movie_id = create_unique_mapping(movies_df, ratings_df)
-    # these dfs will now point to mappedIDs
-    ratings_user_id, ratings_movie_id = merge_indexes(ratings_df, unique_user_id, unique_movie_id)
-
-    # With this, we are ready to construct our `edge_index` in COO format
-    # following PyG semantics:
-    edge_index_user_to_movie = torch.stack([ratings_user_id, ratings_movie_id], dim=0)
-    ### assert edge_index_user_to_movie.size() == (2, 100836)
+    # # load data
+    # movies_df, ratings_df = load_data('../../data/graph/raw/')
+    # # backup of the main df
+    # ratings_df_main = ratings_df
+    # ratings_df = select_data_subset(ratings_df)
+    #
+    # movie_feat = extract_features(movies_df)
+    # ### assert movie_feat.size() == (9742, 20)  # 20 genres in total.
+    #
+    # unique_user_id, unique_movie_id = create_unique_mapping(movies_df, ratings_df)
+    # # these dfs will now point to mappedIDs
+    # ratings_user_id, ratings_movie_id = merge_indexes(ratings_df, unique_user_id, unique_movie_id)
+    #
+    # # With this, we are ready to construct our `edge_index` in COO format
+    # # following PyG semantics:
+    # edge_index_user_to_movie = torch.stack([ratings_user_id, ratings_movie_id], dim=0)
+    # ### assert edge_index_user_to_movie.size() == (2, 100836)
 
     # "user", "movie", "user-rates-movie"
     # data = create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie)
     homogeneous_data = create_custom_homogeneous_data()
     heterogeneous_data = create_custom_heterogeneous_data()
 
+    # load opentf datasets
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
+    data = load_data(filepath)
+
     # # draw the graph
     # draw_graph(data)
 
     # train_data, val_data, test_data = define_splits(homogeneous_data)
-    train_data, val_data, test_data = define_splits(homogeneous_data)
+    train_data, val_data, test_data = define_splits(heterogeneous_data)
+    # train_data, val_data, test_data = define_splits(data)
     # validate_splits(train_data, val_data, test_data)
 
     train_loader = create_mini_batch_loader(train_data)
