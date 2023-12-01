@@ -249,7 +249,7 @@ def validate_splits(train_data, val_data, test_data):
     print(f'Val Data : \n{val_data}')
     print(f'Test Data : \n{test_data}')
 
-    if(type(train_data) == torch_geometric.data.Data):
+    if(type(train_data) == Data):
         # convert to df to compare the overlaps
         train_df = pd.DataFrame(train_data.numpy())
         val_df = pd.DataFrame(val_data.numpy())
@@ -290,15 +290,8 @@ def mini_batch_assertions(sampled_data):
 
 # define the train, valid, test splits
 def define_splits(data):
-    # For this, we first split the set of edges into
-    # training (80%), validation (10%), and testing edges (10%).
-    # Across the training edges, we use 70% of edges for message passing,
-    # and 30% of edges for supervision.
-    # We further want to generate fixed negative edges for evaluation with a ratio of 2:1.
-    # Negative edges during training will be generated on-the-fly.
-    # We can leverage the `RandomLinkSplit()` transform for this from PyG:
 
-    if(type(data) == torch_geometric.data.HeteroData):
+    if(type(data) == HeteroData):
         num_edge_types = len(data.edge_types)
 
         # directed graph means we dont have any reverse edges
@@ -323,46 +316,46 @@ def define_splits(data):
         rev_edge_types=rev_edge_types,
     )
 
-    print(f'---------------Before Transform-------------')
-    print()
-    print(f'data["user"] = {data["user"].num_nodes}')
-    print(f'data["movie"] = {data["movie"].num_nodes}')
-    print(f'data["user","rates","movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
-    print(f'data["user","rates","movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    print(f'data["movie", "rev_rates", "user"].num_edges = {data["movie", "rev_rates", "user"].num_edges}')
+    # print(f'---------------Before Transform-------------')
+    # print()
+    # print(f'data["user"] = {data["user"].num_nodes}')
+    # print(f'data["movie"] = {data["movie"].num_nodes}')
+    # print(f'data["user","rates","movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
+    # print(f'data["user","rates","movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
+    # print(f'data["movie", "rev_rates", "user"].num_edges = {data["movie", "rev_rates", "user"].num_edges}')
 
     train_data, val_data, test_data = transform(data)
 
-    print()
-    print(f'---------------After Transform-------------')
-
-    print("Training data:")
-    print("==============")
-    print(train_data)
-    print(f'........................................')
-    # the edges for supervision
-    print(f'train_data.edge_label_index and edge_index')
-    print(train_data["user", "rates", "movie"].edge_label_index)
-    print(train_data["user", "rates", "movie"].edge_index)
-    print(f'........................................')
-    print()
-    print("Validation data:")
-    print("================")
-    print(f'val_data.edge_label_index and edge_index')
-    print(val_data["user", "rates", "movie"].edge_label_index)
-    print(val_data["user", "rates", "movie"].edge_index)
-    print(f'........................................')
-    print()
-    print(f'test_data.edge_label_index and edge_index')
-    print(test_data["user", "rates", "movie"].edge_label_index)
-    print(test_data["user", "rates", "movie"].edge_index)
-
-    print(f'-------------------------------------------')
-    print(f'counts')
-    print(f'train_data.num_edges = {train_data["user", "rates", "movie"].num_edges}')
-    print(f'train_data.reverse.num_edges = {train_data["movie", "rev_rates", "user"].num_edges}')
-    print(f'validation_data.num_edges = {val_data["user", "rates", "movie"].num_edges}')
-    print(f'test_data.num_edges = {test_data["user", "rates", "movie"].num_edges}')
+    # print()
+    # print(f'---------------After Transform-------------')
+    #
+    # print("Training data:")
+    # print("==============")
+    # print(train_data)
+    # print(f'........................................')
+    # # the edges for supervision
+    # print(f'train_data.edge_label_index and edge_index')
+    # print(train_data["user", "rates", "movie"].edge_label_index)
+    # print(train_data["user", "rates", "movie"].edge_index)
+    # print(f'........................................')
+    # print()
+    # print("Validation data:")
+    # print("================")
+    # print(f'val_data.edge_label_index and edge_index')
+    # print(val_data["user", "rates", "movie"].edge_label_index)
+    # print(val_data["user", "rates", "movie"].edge_index)
+    # print(f'........................................')
+    # print()
+    # print(f'test_data.edge_label_index and edge_index')
+    # print(test_data["user", "rates", "movie"].edge_label_index)
+    # print(test_data["user", "rates", "movie"].edge_index)
+    #
+    # print(f'-------------------------------------------')
+    # print(f'counts')
+    # print(f'train_data.num_edges = {train_data["user", "rates", "movie"].num_edges}')
+    # print(f'train_data.reverse.num_edges = {train_data["movie", "rev_rates", "user"].num_edges}')
+    # print(f'validation_data.num_edges = {val_data["user", "rates", "movie"].num_edges}')
+    # print(f'test_data.num_edges = {test_data["user", "rates", "movie"].num_edges}')
 
     return train_data, val_data, test_data
 
@@ -374,16 +367,24 @@ def create_mini_batch_loader(data):
     # We can make use of the `loader.LinkNeighborLoader` from PyG:
 
     # Define seed edges:
-    edge_label_index = train_data["user", "rates", "movie"].edge_label_index
-    edge_label = train_data["user", "rates", "movie"].edge_label
+    # we pick only a single edge_type to feed edge_label_index (need to verify this approach)
+    if (type(data) == HeteroData):
+        edge_types = train_data.edge_types
+        edge_label_index = train_data[edge_types[0]].edge_label_index
+        edge_label = train_data[edge_types[0]].edge_label
+        edge_label_index_tuple = (edge_types[0], edge_label_index)
+    else:
+        edge_label_index = train_data.edge_label_index
+        edge_label = train_data.edge_label
+        edge_label_index_tuple = edge_label_index
     print(f'edge_label stuffs : {edge_label_index}, {edge_label}')
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
         num_neighbors=[1, 1],
         neg_sampling_ratio=1.0,
-        edge_label_index=(("user", "rates", "movie"), edge_label_index),
-        edge_label=edge_label,
+        edge_label_index = edge_label_index_tuple,
+        edge_label = edge_label,
         batch_size=3,
         shuffle=True,
     )
@@ -489,8 +490,8 @@ if __name__ == '__main__':
     # draw_graph(data)
 
     # train_data, val_data, test_data = define_splits(homogeneous_data)
-    train_data, val_data, test_data = define_splits(heterogeneous_data)
-    validate_splits(train_data, val_data, test_data)
+    train_data, val_data, test_data = define_splits(homogeneous_data)
+    # validate_splits(train_data, val_data, test_data)
 
     train_loader = create_mini_batch_loader(train_data)
     val_loader = create_mini_batch_loader(val_data)
