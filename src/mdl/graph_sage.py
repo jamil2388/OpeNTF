@@ -21,12 +21,12 @@ class GS(torch.nn.Module):
 class Classifier(torch.nn.Module):
     # all the node types and edge_label_indices of all edge_types will be passed
     # we have to calculate the predictions based on all combinations
-    def forward(self, x_user: Tensor, x_movie: Tensor, edge_label_index: Tensor) -> Tensor:
+    def forward(self, x_dict, data) -> Tensor:
         # Convert node embeddings to edge-level representations:
         edge_feat_user = x_user[edge_label_index[0]]
         edge_feat_movie = x_movie[edge_label_index[1]]
 
-        # Apply dot-product to get a prediction per supervision edge:
+        # Apply dot-product to get a prediction per supervision edge per edge_label_index:
         return (edge_feat_user * edge_feat_movie).sum(dim=-1)
 
 
@@ -56,27 +56,19 @@ class Model(torch.nn.Module):
             # Convert gs model into a heterogeneous variant:
             self.gs = to_hetero(self.gs, metadata=data.metadata())
 
+        # instantiate the predictor class
         self.classifier = Classifier()
 
-    def forward(self, data: HeteroData) -> Tensor:
+    def forward(self, data, is_directed) -> Tensor:
+        x_dict = {}
+        for i, node_type in enumerate(data.node_types):
+            x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
 
-        for node_type in data.node_types:
+        pred = []
 
-        for edge_type in data.edge_types:
-
-
-        x_dict = {
-            # previously, the lin layer was ignored because of not having any features, we can still ignore it now
-            "user": self.user_lin(data["user"].x) + self.user_emb(data["user"].node_id),
-            # the feature x conversion part with movie_lin should be revisited
-            "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
-            # "movie": self.movie_lin(data["movie"].x),
-            # "movie":  self.movie_emb(data["movie"].node_id),
-        }
-
-        # `x_dict` holds feature matrices of all node types
+        # `x_dict` holds embedding matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
         x_dict = self.gs(x_dict, data.edge_index_dict)
-        pred.append(self.classifier(x_dict["source"], x_dict["dest"], data["user", "rates", "movie"].edge_label_index,))
+        pred.append(self.classifier(x_dict["source"], x_dict["dest"], data["user", "rates", "movie"].edge_label_index))
 
         return pred

@@ -420,10 +420,10 @@ def create_mini_batch_loader(data):
     # print(f'sampled_data["edge1"].num_nodes = {sampled_data["user", "rates", "movie"].num_edges}')
     return mini_batch_loader
 
-def create():
+def create(data):
 
-    # model = Model(hidden_channels=10, data = train_data)
-    model = Model_bk(hidden_channels=10, data = train_data)
+    model = Model(hidden_channels=10, data = train_data)
+    # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -433,7 +433,7 @@ def create():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     return model,optimizer
 
-def learn(train_loader):
+def learn(train_loader, is_directed):
     for epoch in range(1, 100):
         total_loss = total_examples = 0
         print(f'epoch = {epoch}')
@@ -441,9 +441,15 @@ def learn(train_loader):
             optimizer.zero_grad()
 
             sampled_data.to(device)
-            pred = model(sampled_data)
+            pred = model(sampled_data, is_directed)
 
-            ground_truth = sampled_data["user", "rates", "movie"].edge_label
+            if(type(sampled_data) == HeteroData):
+                # we have ground_truths per edge_label
+                # ground_truth = []
+                # ground_truth.append(sampled_data[edge_type].edge_label for edge_type in sampled_data.edge_types)
+                ground_truth = sampled_data['user','rates','movie'].edge_label
+            else:
+                ground_truth = sampled_data.edge_label
             loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
 
             loss.backward()
@@ -506,6 +512,7 @@ if __name__ == '__main__':
     # load opentf datasets
     filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
     data = load_data(filepath)
+    is_directed = not ('undir' in os.path.split(filepath)[1])
 
     # # draw the graph
     # draw_graph(data)
@@ -522,6 +529,9 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: '{device}'")
 
-    model,optimizer = create()
-    learn(train_loader)
+    # the train_data is needed to collect info about the metadata
+    model,optimizer = create(train_data)
+    # the sampled_data from mini_batch_loader does not properly show the
+    # is_directed status
+    learn(train_loader, is_directed)
     eval(test_loader)

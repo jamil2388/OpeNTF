@@ -61,16 +61,18 @@ class Model(torch.nn.Module):
             "user": self.user_lin(data["user"].x) + self.user_emb(data["user"].node_id),
             # the feature x conversion part with movie_lin should be revisited
             "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
-            # "movie": self.movie_lin(data["movie"].x),
-            # "movie":  self.movie_emb(data["movie"].node_id),
         }
 
         # `x_dict` holds feature matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
+        # pass the embedding of the nodes of all node types and also the edge_index_dict
+        # containing the info of all message passing edges
+        # this x_dict will now contain the updated embeddings after the message passed layers
         x_dict = self.gs(x_dict, data.edge_index_dict)
+
+
         pred = self.classifier(
-            x_dict["user"],
-            x_dict["movie"],
+            x_dict,
             data["user", "rates", "movie"].edge_label_index,
         )
 
