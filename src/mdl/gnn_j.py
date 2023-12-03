@@ -6,7 +6,7 @@ from torch_geometric.data import download_url, extract_zip
 import pandas as pd
 import pickle
 from torch_geometric.data import HeteroData, Data
-from torch_geometric.loader import LinkNeighborLoader
+from torch_geometric.loader import LinkNeighborLoader, HGTLoader
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,122 +30,6 @@ def draw_graph(G):
     nx.draw(G, node_color = "red", node_size = 1000, with_labels = True)
     plt.margins(0.5)
     plt.show()
-
-
-def load_data(path):
-    movies_path = f'{path}/ml-latest-small/movies.csv'
-    ratings_path = f'{path}/ml-latest-small/ratings.csv'
-
-    # if the paths does not exist, we need to download and extract them
-    if(not os.path.exists(movies_path) and not os.path.exists(ratings_path)):
-        url = 'https://files.grouplens.org/datasets/movielens/ml-latest-small.zip'
-        extract_zip(download_url(url, path), path)
-
-    print('movies.csv:')
-    print('===========')
-    print(pd.read_csv(movies_path)[["movieId", "genres"]].head())
-    print()
-    print('ratings.csv:')
-    print('============')
-    print(pd.read_csv(ratings_path)[["userId", "movieId"]].tail())
-
-    # Load the entire movie data frame into memory:
-    movies_df = pd.read_csv(movies_path, index_col='movieId')
-    # Load the entire ratings data frame into memory:
-    ratings_df = pd.read_csv(ratings_path)
-
-    return movies_df, ratings_df
-
-# return a subset df based on the input col condition
-def select_data_subset(df, col = None):
-
-    df_sub = df[df['userId'] < 5]
-
-    # subset df
-    print(f'')
-
-    return df_sub
-
-def extract_features(movies_df):
-    # Split genres and convert into indicator variables:
-    genres = movies_df['genres'].str.get_dummies('|')
-    print(genres[["Action", "Adventure", "Drama", "Horror"]].head())
-
-    # Use genres as movie input features:
-    movie_feat = torch.from_numpy(genres.values).to(torch.float)
-
-    return movie_feat
-
-def create_unique_mapping(movies_df, ratings_df):
-    print(f'unique_user_id before mapping')
-    # Create a mapping from unique user indices to range [0, num_user_nodes):
-    unique_user_id = ratings_df['userId'].unique()
-    print(f'unique_user_id = {unique_user_id.shape}')
-    unique_user_id = pd.DataFrame(data={
-        'userId': unique_user_id,
-        'mappedID': pd.RangeIndex(len(unique_user_id)),
-    })
-    print(f'unique_user_id after mapping')
-    print(f'unique_user_id = {unique_user_id.shape}')
-
-    print("Mapping of user IDs to consecutive values:")
-    print("==========================================")
-    print(unique_user_id.head())
-    print()
-    # Create a mapping from unique movie indices to range [0, num_movie_nodes):
-    unique_movie_id = ratings_df['movieId'].unique()
-
-    print(f'unique_movie_id = {unique_movie_id.shape}')
-    unique_movie_id = pd.DataFrame(data={
-        'movieId': movies_df.index,
-        'mappedID': pd.RangeIndex(len(movies_df)),
-    })
-    print(f'unique_movie_id after conversion = {unique_movie_id.shape}')
-    print("Mapping of movie IDs to consecutive values:")
-    print("===========================================")
-    print(unique_movie_id.head())
-
-    return unique_user_id, unique_movie_id
-
-# merge to produce ratings_user_id and ratings_movie_id
-def merge_indexes(ratings_df, unique_user_id, unique_movie_id):
-    # Perform merge to obtain the edges from users and movies:
-    ratings_user_id = pd.merge(ratings_df['userId'], unique_user_id,
-                               left_on='userId', right_on='userId', how='left')
-    ratings_user_id = torch.from_numpy(ratings_user_id['mappedID'].values)
-    ratings_movie_id = pd.merge(ratings_df['movieId'], unique_movie_id,
-                                left_on='movieId', right_on='movieId', how='left')
-    ratings_movie_id = torch.from_numpy(ratings_movie_id['mappedID'].values)
-
-    print(f'ratings_user_id after merge = {ratings_user_id}')
-    return ratings_user_id, ratings_movie_id
-
-def create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie):
-    data = HeteroData()
-    print(f'data.to_dict = {data.to_dict()}')
-
-    # Save node indices:
-    data["user"].node_id = torch.arange(len(unique_user_id))
-    data["movie"].node_id = torch.arange(len(unique_movie_id))
-    print(f'type of data["user"].node_id = {type(data["user"].node_id)}')
-
-    # Add the node features and edge indices:
-    data["movie"].x = movie_feat
-    data["user", "rates", "movie"].edge_index = edge_index_user_to_movie
-    print(f'data.to_dict = {data.to_dict()}')
-
-    # We also need to make sure to add the reverse edges from movies to users
-    # in order to let a GNN be able to pass messages in both directions.
-    # We can leverage the `T.ToUndirected()` transform for this from PyG:
-    data = T.ToUndirected()(data)
-    print(f'data.to_dict = {data.to_dict()}')
-
-    print(data)
-
-    # assertion checks
-    data_assertions(data)
-
-    return data
 
 # load previously written graph files
 def load_data(filepath):
@@ -273,36 +157,6 @@ def validate_splits(train_data, val_data, test_data):
 
         train_test_df = pd.merge(train_df, test_df, how = 'inner', on = train_data.columns)
 
-# ignore when you have custom data
-def data_assertions(data):
-    assert data.node_types == ["user", "movie"]
-    assert data.edge_types == [("user", "rates", "movie"),
-                               ("movie", "rev_rates", "user")]
-    assert data["user"].num_nodes == 610
-    assert data["user"].num_features == 0
-    assert data["movie"].num_nodes == 9742
-    assert data["movie"].num_features == 20
-    assert data["user", "rates", "movie"].num_edges == 100836
-    assert data["movie", "rev_rates", "user"].num_edges == 100836
-
-def split_assertions(train_data, val_data, test_data):
-    assert train_data["user", "rates", "movie"].num_edges == 56469
-    assert train_data["user", "rates", "movie"].edge_label_index.size(1) == 24201
-    assert train_data["movie", "rev_rates", "user"].num_edges == 56469
-    # No negative edges added:
-    assert train_data["user", "rates", "movie"].edge_label.min() == 1
-    assert train_data["user", "rates", "movie"].edge_label.max() == 1
-
-    assert val_data["user", "rates", "movie"].num_edges == 80670
-    assert val_data["user", "rates", "movie"].edge_label_index.size(1) == 30249
-    assert val_data["movie", "rev_rates", "user"].num_edges == 80670
-    # Negative edges with ratio 2:1:
-    assert val_data["user", "rates", "movie"].edge_label.long().bincount().tolist() == [20166, 10083]
-
-def mini_batch_assertions(sampled_data):
-    assert sampled_data["user", "rates", "movie"].edge_label_index.size(1) == 3 * 128
-    assert sampled_data["user", "rates", "movie"].edge_label.min() == 0
-    assert sampled_data["user", "rates", "movie"].edge_label.max() == 1
 
 # define the train, valid, test splits
 def define_splits(data):
@@ -376,12 +230,6 @@ def define_splits(data):
     return train_data, val_data, test_data
 
 def create_mini_batch_loader(data):
-    # In the first hop, we sample at most 20 neighbors.
-    # In the second hop, we sample at most 10 neighbors.
-    # In addition, during training, we want to sample negative edges on-the-fly with
-    # a ratio of 2:1.
-    # We can make use of the `loader.LinkNeighborLoader` from PyG:
-
     # Define seed edges:
     # we pick only a single edge_type to feed edge_label_index (need to verify this approach)
     if (type(data) == HeteroData):
@@ -397,13 +245,24 @@ def create_mini_batch_loader(data):
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
-        num_neighbors=[10, 10],
+        num_neighbors=[20, 10],
         neg_sampling_ratio=1.0,
         edge_label_index = edge_label_index_tuple,
+        # edge_label_index = None,
         edge_label = edge_label,
-        batch_size=32,
-        shuffle=True,
+        # edge_label = None,
+        batch_size=2,
+        # shuffle=True,
     )
+
+    # mini_batch_loader = HGTLoader(
+    #     data = data,
+    #     # Sample 20 nodes per type
+    #     num_samples = [20],
+    #     # Use a batch size of 128 for sampling training nodes of type paper
+    #     batch_size=128,
+    #     input_nodes=edge_label_index_tuple,
+    # )
 
     # Inspect a sample:
     # sampled_data = next(iter(train_loader))
@@ -411,18 +270,11 @@ def create_mini_batch_loader(data):
         print(f'sample data for iteration : {i}')
         print(data)
         print(f'---------------------------------------\n')
-
-    # print("Sampled mini-batch:")
-    # print("===================")
-    # print(sampled_data.to_dict().keys())
-    # print(f'sampled_data["user"].num_nodes = {sampled_data["user"].num_nodes}')
-    # print(f'sampled_data["movie"].num_nodes = {sampled_data["movie"].num_nodes}')
-    # print(f'sampled_data["edge1"].num_nodes = {sampled_data["user", "rates", "movie"].num_edges}')
     return mini_batch_loader
 
 def create(data):
 
-    model = Model(hidden_channels=10, data = train_data)
+    model = Model(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
@@ -434,20 +286,25 @@ def create(data):
     return model,optimizer
 
 def learn(train_loader, is_directed):
-    for epoch in range(1, 100):
+    for epoch in range(1, 1000):
         total_loss = total_examples = 0
-        print(f'epoch = {epoch}')
+        # print(f'epoch = {epoch}')
         for sampled_data in train_loader:
             optimizer.zero_grad()
 
             sampled_data.to(device)
             pred = model(sampled_data, is_directed)
 
+            # The ground_truth and the pred shapes should be 1-dimensional
+            # we squeeze them after generation
             if(type(sampled_data) == HeteroData):
-                # we have ground_truths per edge_label
-                # ground_truth = []
-                # ground_truth.append(sampled_data[edge_type].edge_label for edge_type in sampled_data.edge_types)
-                ground_truth = sampled_data['user','rates','movie'].edge_label
+                edge_types = sampled_data.edge_types if is_directed else sampled_data.edge_types[:(len(sampled_data.edge_types)) // 2]
+                # we have ground_truths per edge_label_index
+                ground_truth = torch.empty(0)
+                for edge_type in edge_types:
+                    ground_truth = torch.cat((ground_truth, sampled_data[edge_type].edge_label.unsqueeze(0)), dim = 1)
+                ground_truth = ground_truth.squeeze(0)
+                # ground_truth = sampled_data['user','rates','movie'].edge_label
             else:
                 ground_truth = sampled_data.edge_label
             loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
@@ -461,21 +318,28 @@ def learn(train_loader, is_directed):
         # print(f'loss = {loss}')
         # print(f'total_examples = {total_examples}')
         # print(f'total_loss = {total_loss}')
+
         # validation part here maybe ?
         if epoch % 10 == 0 :
-            auc = eval(val_loader)
+            # auc = eval(val_loader)
             print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
 
 # loader can be test or can be validation
-def eval(loader):
+def eval(loader, is_directed):
     preds = []
     ground_truths = []
     for sampled_data in tqdm.tqdm(loader):
         with torch.no_grad():
             sampled_data.to(device)
-            preds.append(model(sampled_data))
-            ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
+            preds.append(model(sampled_data, is_directed))
+            # ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
+            if (type(sampled_data) == HeteroData):
+                # we have ground_truths per edge_label_index
+                ground_truths.append(sampled_data[edge_type].edge_label for edge_type in sampled_data.edge_types)
+                # ground_truth = sampled_data['user','rates','movie'].edge_label
+            else:
+                ground_truths = sampled_data.edge_label
 
     pred = torch.cat(preds, dim=0).cpu().numpy()
     ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
@@ -485,27 +349,6 @@ def eval(loader):
     return auc
 
 if __name__ == '__main__':
-
-    # # load data
-    # movies_df, ratings_df = load_data('../../data/graph/raw/')
-    # # backup of the main df
-    # ratings_df_main = ratings_df
-    # ratings_df = select_data_subset(ratings_df)
-    #
-    # movie_feat = extract_features(movies_df)
-    # ### assert movie_feat.size() == (9742, 20)  # 20 genres in total.
-    #
-    # unique_user_id, unique_movie_id = create_unique_mapping(movies_df, ratings_df)
-    # # these dfs will now point to mappedIDs
-    # ratings_user_id, ratings_movie_id = merge_indexes(ratings_df, unique_user_id, unique_movie_id)
-    #
-    # # With this, we are ready to construct our `edge_index` in COO format
-    # # following PyG semantics:
-    # edge_index_user_to_movie = torch.stack([ratings_user_id, ratings_movie_id], dim=0)
-    # ### assert edge_index_user_to_movie.size() == (2, 100836)
-
-    # "user", "movie", "user-rates-movie"
-    # data = create_data(unique_user_id, unique_movie_id, edge_index_user_to_movie)
     homogeneous_data = create_custom_homogeneous_data()
     heterogeneous_data = create_custom_heterogeneous_data()
 
@@ -518,8 +361,8 @@ if __name__ == '__main__':
     # draw_graph(data)
 
     # train_data, val_data, test_data = define_splits(homogeneous_data)
-    train_data, val_data, test_data = define_splits(heterogeneous_data)
-    # train_data, val_data, test_data = define_splits(data)
+    # train_data, val_data, test_data = define_splits(heterogeneous_data)
+    train_data, val_data, test_data = define_splits(data)
     # validate_splits(train_data, val_data, test_data)
 
     train_loader = create_mini_batch_loader(train_data)
@@ -534,4 +377,4 @@ if __name__ == '__main__':
     # the sampled_data from mini_batch_loader does not properly show the
     # is_directed status
     learn(train_loader, is_directed)
-    eval(test_loader)
+    # eval(test_loader)

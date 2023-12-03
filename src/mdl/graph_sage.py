@@ -19,15 +19,13 @@ class GS(torch.nn.Module):
 # Our final classifier applies the dot-product between source and destination
 # node embeddings to derive edge-level predictions:
 class Classifier(torch.nn.Module):
-    # all the node types and edge_label_indices of all edge_types will be passed
-    # we have to calculate the predictions based on all combinations
-    def forward(self, x_dict, data) -> Tensor:
+    def forward(self, source_node_emb, target_node_emb, edge_label_index) -> Tensor:
         # Convert node embeddings to edge-level representations:
-        edge_feat_user = x_user[edge_label_index[0]]
-        edge_feat_movie = x_movie[edge_label_index[1]]
+        edge_feat_source = source_node_emb[edge_label_index[0]]
+        edge_feat_target = target_node_emb[edge_label_index[1]]
 
-        # Apply dot-product to get a prediction per supervision edge per edge_label_index:
-        return (edge_feat_user * edge_feat_movie).sum(dim=-1)
+        # Apply dot-product to get a prediction per supervision edge in the edge_label_index
+        return (edge_feat_source * edge_feat_target).sum(dim=-1)
 
 
 class Model(torch.nn.Module):
@@ -61,14 +59,31 @@ class Model(torch.nn.Module):
 
     def forward(self, data, is_directed) -> Tensor:
         x_dict = {}
-        for i, node_type in enumerate(data.node_types):
-            x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
-
-        pred = []
+        if(type(data) == HeteroData):
+            edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
+            for i, node_type in enumerate(data.node_types):
+                x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+        else:
+            x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
 
         # `x_dict` holds embedding matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
         x_dict = self.gs(x_dict, data.edge_index_dict)
-        pred.append(self.classifier(x_dict["source"], x_dict["dest"], data["user", "rates", "movie"].edge_label_index))
 
-        return pred
+        # create an empty tensor and concatenate the preds afterwards
+        preds = torch.empty(0)
+
+        if (type(data) == HeteroData):
+            # generate predictions per edge_label_index type
+            # e.g: for edge_type 1, 2, 3
+            # source_node_emb contains the embeddings of each node of the defined node_type
+            for edge_type in edge_types:
+                source_node_emb = x_dict[edge_type[0]]
+                target_node_emb = x_dict[edge_type[2]]
+                edge_label_index = data[edge_type].edge_label_index
+                pred = self.classifier(source_node_emb, target_node_emb, edge_label_index)
+                preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
+        else:
+            pred = self.classifier(x_dict['node'], x_dict['node'], data.edge_label_index)
+            preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
+        return preds.squeeze(dim=0)

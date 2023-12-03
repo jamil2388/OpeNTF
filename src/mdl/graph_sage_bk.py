@@ -54,7 +54,7 @@ class Model(torch.nn.Module):
 
         self.classifier = Classifier()
 
-    def forward(self, data: HeteroData) -> Tensor:
+    def forward(self, data, is_directed) -> Tensor:
 
         x_dict = {
             # previously, the lin layer was ignored because of not having any features, we can still ignore it now
@@ -72,7 +72,8 @@ class Model(torch.nn.Module):
 
 
         pred = self.classifier(
-            x_dict,
+            x_dict['user'],
+            x_dict['movie'],
             data["user", "rates", "movie"].edge_label_index,
         )
 
