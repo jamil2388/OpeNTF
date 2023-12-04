@@ -387,7 +387,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/sm.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.undir.none.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 

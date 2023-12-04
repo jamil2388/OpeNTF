@@ -63,15 +63,17 @@ class Model(torch.nn.Module):
             edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
                 x_dict[node_type] = self.node_lin[i](data[node_type].x)
+                x_dict = self.gs(x_dict, data.edge_index_dict)
                 # this line is for batching mode
                 # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
         else:
-            x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
+            x = self.node_lin(data.x)
+            x = self.gs(x, data.edge_index)
             # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
 
         # `x_dict` holds embedding matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
-        x_dict = self.gs(x_dict, data.edge_index_dict)
+
 
         # create an empty tensor and concatenate the preds afterwards
         preds = torch.empty(0)
@@ -87,6 +89,7 @@ class Model(torch.nn.Module):
                 pred = self.classifier(source_node_emb, target_node_emb, edge_label_index)
                 preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
         else:
-            pred = self.classifier(x_dict['node'], x_dict['node'], data.edge_label_index)
+            pred = self.classifier(x, x, data.edge_label_index)
+            # pred = self.classifier(x_dict['node'], x_dict['node'], data.edge_label_index)
             preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
         return preds.squeeze(dim=0)
