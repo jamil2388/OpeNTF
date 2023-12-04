@@ -62,9 +62,12 @@ class Model(torch.nn.Module):
         if(type(data) == HeteroData):
             edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
-                x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+                x_dict[node_type] = self.node_lin[i](data[node_type].x)
+                # this line is for batching mode
+                # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
         else:
             x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
+            # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
 
         # `x_dict` holds embedding matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types

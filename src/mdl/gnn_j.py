@@ -245,13 +245,13 @@ def create_mini_batch_loader(data):
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
-        num_neighbors=[20, 10],
-        neg_sampling_ratio=1.0,
+        num_neighbors=[100,100,100],
+        neg_sampling_ratio=0.0,
         edge_label_index = edge_label_index_tuple,
         # edge_label_index = None,
         edge_label = edge_label,
         # edge_label = None,
-        batch_size=2,
+        batch_size=1000000000,
         # shuffle=True,
     )
 
@@ -285,7 +285,41 @@ def create(data):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     return model,optimizer
 
-def learn(train_loader, is_directed):
+def learn(data):
+
+    is_directed = data.is_directed()
+    min_loss = 100000000000
+    epochs = 100
+
+    for epoch in range(1, epochs):
+        optimizer.zero_grad()
+        data.to(device)
+        pred = model(data, is_directed)
+
+        if (type(data) == HeteroData):
+            edge_types = data.edge_types if is_directed else data.edge_types[
+                                                                     :(len(data.edge_types)) // 2]
+            # we have ground_truths per edge_label_index
+            ground_truth = torch.empty(0)
+            for edge_type in edge_types:
+                ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
+            ground_truth = ground_truth.squeeze(0)
+            # ground_truth = sampled_data['user','rates','movie'].edge_label
+        else:
+            ground_truth = data.edge_label
+
+        loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+        loss.backward()
+        optimizer.step()
+
+        if(loss < min_loss):
+            min_loss = loss
+        if(epoch % 10 == 0):
+            print(f'epoch : {epoch}, loss : {loss:.4f}')
+    print(f'min_loss after {epochs} epochs : {min_loss:.4f}')
+
+# learning with batching
+def learn_batch(train_loader, is_directed):
     for epoch in range(1, 1000):
         total_loss = total_examples = 0
         # print(f'epoch = {epoch}')
@@ -353,9 +387,9 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/sm.undir.none.data.pkl'
     data = load_data(filepath)
-    is_directed = not ('undir' in os.path.split(filepath)[1])
+    is_directed = data.is_directed()
 
     # # draw the graph
     # draw_graph(data)
@@ -365,9 +399,9 @@ if __name__ == '__main__':
     train_data, val_data, test_data = define_splits(data)
     # validate_splits(train_data, val_data, test_data)
 
-    train_loader = create_mini_batch_loader(train_data)
-    val_loader = create_mini_batch_loader(val_data)
-    test_loader = create_mini_batch_loader(test_data)
+    # train_loader = create_mini_batch_loader(train_data)
+    # val_loader = create_mini_batch_loader(val_data)
+    # test_loader = create_mini_batch_loader(test_data)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: '{device}'")
@@ -376,5 +410,6 @@ if __name__ == '__main__':
     model,optimizer = create(train_data)
     # the sampled_data from mini_batch_loader does not properly show the
     # is_directed status
-    learn(train_loader, is_directed)
+    learn(train_data)
+    # learn_batch(train_loader, is_directed)
     # eval(test_loader)
