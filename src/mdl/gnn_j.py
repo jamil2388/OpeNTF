@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch_geometric.transforms as T
 import torch.nn.functional as F
-from src.mdl.graph_sage import Model as Model
+from src.mdl.graph_sage import Model as GSModel
+from src.mdl.gcn import Model as GCNModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 from sklearn.metrics import roc_auc_score
@@ -274,7 +275,8 @@ def create_mini_batch_loader(data):
 
 def create(data):
 
-    model = Model(hidden_channels=10, data = data)
+    model = GSModel(hidden_channels=10, data = data)
+    # model = GCNModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
@@ -285,6 +287,7 @@ def create(data):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     return model,optimizer
 
+# learn for unbatched data
 def learn(data):
 
     is_directed = data.is_directed()
@@ -387,7 +390,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
@@ -399,6 +402,7 @@ if __name__ == '__main__':
     train_data, val_data, test_data = define_splits(data)
     # validate_splits(train_data, val_data, test_data)
 
+    ## Sampling
     # train_loader = create_mini_batch_loader(train_data)
     # val_loader = create_mini_batch_loader(val_data)
     # test_loader = create_mini_batch_loader(test_data)
