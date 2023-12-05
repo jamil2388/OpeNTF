@@ -188,46 +188,7 @@ def define_splits(data):
         rev_edge_types=rev_edge_types,
     )
 
-    # print(f'---------------Before Transform-------------')
-    # print()
-    # print(f'data["user"] = {data["user"].num_nodes}')
-    # print(f'data["movie"] = {data["movie"].num_nodes}')
-    # print(f'data["user","rates","movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
-    # print(f'data["user","rates","movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    # print(f'data["movie", "rev_rates", "user"].num_edges = {data["movie", "rev_rates", "user"].num_edges}')
-
     train_data, val_data, test_data = transform(data)
-
-    # print()
-    # print(f'---------------After Transform-------------')
-    #
-    # print("Training data:")
-    # print("==============")
-    # print(train_data)
-    # print(f'........................................')
-    # # the edges for supervision
-    # print(f'train_data.edge_label_index and edge_index')
-    # print(train_data["user", "rates", "movie"].edge_label_index)
-    # print(train_data["user", "rates", "movie"].edge_index)
-    # print(f'........................................')
-    # print()
-    # print("Validation data:")
-    # print("================")
-    # print(f'val_data.edge_label_index and edge_index')
-    # print(val_data["user", "rates", "movie"].edge_label_index)
-    # print(val_data["user", "rates", "movie"].edge_index)
-    # print(f'........................................')
-    # print()
-    # print(f'test_data.edge_label_index and edge_index')
-    # print(test_data["user", "rates", "movie"].edge_label_index)
-    # print(test_data["user", "rates", "movie"].edge_index)
-    #
-    # print(f'-------------------------------------------')
-    # print(f'counts')
-    # print(f'train_data.num_edges = {train_data["user", "rates", "movie"].num_edges}')
-    # print(f'train_data.reverse.num_edges = {train_data["movie", "rev_rates", "user"].num_edges}')
-    # print(f'validation_data.num_edges = {val_data["user", "rates", "movie"].num_edges}')
-    # print(f'test_data.num_edges = {test_data["user", "rates", "movie"].num_edges}')
 
     return train_data, val_data, test_data
 
@@ -247,13 +208,13 @@ def create_mini_batch_loader(data):
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
-        num_neighbors=[100,100,100],
+        num_neighbors=[20, 10],
         neg_sampling_ratio=0.0,
         edge_label_index = edge_label_index_tuple,
         # edge_label_index = None,
         edge_label = edge_label,
         # edge_label = None,
-        batch_size=1000000000,
+        batch_size=32,
         # shuffle=True,
     )
 
@@ -328,10 +289,11 @@ def learn(data):
             min_loss = loss
         if(epoch % 10 == 0):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
+
     print(f'min_loss after {epochs} epochs : {min_loss:.4f}')
     end = time.time()
     total_time = end - start
-    print(f'total time taken : {total_time:.2f} seconds or {total_time / (60 * 60)} hours')
+    print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours')
 
     # store the final embeddings
     filepath2 = os.path.split(filepath)[0] + 'temp.pkl'
@@ -341,7 +303,10 @@ def learn(data):
 
 # learning with batching
 def learn_batch(train_loader, is_directed):
-    for epoch in range(1, 1000):
+
+    epochs = 1000
+
+    for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
         # print(f'epoch = {epoch}')
         for sampled_data in train_loader:
@@ -369,10 +334,10 @@ def learn_batch(train_loader, is_directed):
             total_loss += float(loss) * pred.numel()
             total_examples += pred.numel()
             # print(f'loss = {loss}')
-        # print(f'epoch = {epoch}')
-        # print(f'loss = {loss}')
-        # print(f'total_examples = {total_examples}')
-        # print(f'total_loss = {total_loss}')
+            # print(f'epoch = {epoch}')
+            # print(f'loss = {loss}')
+            # print(f'total_examples = {total_examples}')
+            # print(f'total_loss = {total_loss}')
 
         # validation part here maybe ?
         if epoch % 10 == 0 :
@@ -421,7 +386,7 @@ if __name__ == '__main__':
     # validate_splits(train_data, val_data, test_data)
 
     ## Sampling
-    # train_loader = create_mini_batch_loader(train_data)
+    train_loader = create_mini_batch_loader(train_data)
     # val_loader = create_mini_batch_loader(val_data)
     # test_loader = create_mini_batch_loader(test_data)
 
@@ -430,8 +395,9 @@ if __name__ == '__main__':
 
     # the train_data is needed to collect info about the metadata
     model,optimizer = create(train_data)
+
+    # learn(train_data)
     # the sampled_data from mini_batch_loader does not properly show the
     # is_directed status
-    learn(train_data)
-    # learn_batch(train_loader, is_directed)
+    learn_batch(train_loader, is_directed)
     # eval(test_loader)

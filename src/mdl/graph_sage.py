@@ -59,7 +59,6 @@ class Model(torch.nn.Module):
 
     def forward(self, data, is_directed) -> Tensor:
 
-
         if(type(data) == HeteroData):
             x_dict = {}
             self.x_dict = x_dict
