@@ -58,8 +58,11 @@ class Model(torch.nn.Module):
         self.classifier = Classifier()
 
     def forward(self, data, is_directed) -> Tensor:
-        x_dict = {}
+
+
         if(type(data) == HeteroData):
+            x_dict = {}
+            self.x_dict = x_dict
             edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
                 x_dict[node_type] = self.node_lin[i](data[node_type].x)
@@ -69,6 +72,7 @@ class Model(torch.nn.Module):
         else:
             x = self.node_lin(data.x)
             x = self.gs(x, data.edge_index)
+            self.x = x
             # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
 
         # `x_dict` holds embedding matrices of all node types

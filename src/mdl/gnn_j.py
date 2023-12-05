@@ -16,6 +16,7 @@ from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
+import time
 from sklearn.metrics import roc_auc_score
 
 '''
@@ -289,17 +290,19 @@ def create(data):
 
 # learn for unbatched data
 def learn(data):
-
+    start = time.time()
     is_directed = data.is_directed()
     min_loss = 100000000000
     epochs = 100
+    emb = {}
 
-    for epoch in range(1, epochs):
+    for epoch in range(1, epochs + 1):
         optimizer.zero_grad()
         data.to(device)
         pred = model(data, is_directed)
 
         if (type(data) == HeteroData):
+            node_types = data.node_types
             edge_types = data.edge_types if is_directed else data.edge_types[
                                                                      :(len(data.edge_types)) // 2]
             # we have ground_truths per edge_label_index
@@ -307,8 +310,14 @@ def learn(data):
             for edge_type in edge_types:
                 ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
             ground_truth = ground_truth.squeeze(0)
+
+            for node_type in node_types:
+                if(epoch == epochs):
+                    emb[node_type] = model[node_type].x_dict
             # ground_truth = sampled_data['user','rates','movie'].edge_label
         else:
+            if (epoch == epochs):
+                emb['node'] = model.x
             ground_truth = data.edge_label
 
         loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
@@ -320,6 +329,15 @@ def learn(data):
         if(epoch % 10 == 0):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
     print(f'min_loss after {epochs} epochs : {min_loss:.4f}')
+    end = time.time()
+    total_time = end - start
+    print(f'total time taken : {total_time:.2f} seconds or {total_time / (60 * 60)} hours')
+
+    # store the final embeddings
+    filepath2 = os.path.split(filepath)[0] + 'temp.pkl'
+    with open(filepath2, 'wb') as f:
+        pickle.dump(emb, f)
+
 
 # learning with batching
 def learn_batch(train_loader, is_directed):
@@ -390,7 +408,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.undir.none.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
