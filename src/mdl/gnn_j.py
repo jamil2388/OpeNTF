@@ -237,8 +237,8 @@ def create_mini_batch_loader(data):
 
 def create(data):
 
-    model = GSModel(hidden_channels=10, data = data)
-    # model = GCNModel(hidden_channels=10, data = data)
+    # model = GSModel(hidden_channels=10, data = data)
+    model = GCNModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
@@ -254,7 +254,7 @@ def learn(data):
     start = time.time()
     is_directed = data.is_directed()
     min_loss = 100000000000
-    epochs = 100
+    epochs = 1000
     emb = {}
 
     for epoch in range(1, epochs + 1):
@@ -364,7 +364,11 @@ def eval(data, mode = 'validation'):
             ground_truth = data.edge_label
 
     loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+
     print(f'{mode} loss : {loss:.4f}')
+    print(f'pred = {pred}')
+    print(f'ground_truth = {ground_truth}')
+    print(f'pred = {pred.sigmoid()}')
 
     if(mode == 'validation'):
         auc = roc_auc_score(ground_truth, torch.sigmoid(pred))
@@ -400,7 +404,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.dir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
