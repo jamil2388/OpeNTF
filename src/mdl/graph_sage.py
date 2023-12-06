@@ -65,9 +65,11 @@ class Model(torch.nn.Module):
             edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
                 x_dict[node_type] = self.node_lin[i](data[node_type].x)
-                x_dict = self.gs(x_dict, data.edge_index_dict)
                 # this line is for batching mode
                 # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+            # message passing
+            x_dict = self.gs(x_dict, data.edge_index_dict)
+
         else:
             x = self.node_lin(data.x)
             x = self.gs(x, data.edge_index)

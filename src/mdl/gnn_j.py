@@ -274,7 +274,7 @@ def learn(data):
 
             for node_type in node_types:
                 if(epoch == epochs):
-                    emb[node_type] = model[node_type].x_dict
+                    emb[node_type] = model.x_dict[node_type]
             # ground_truth = sampled_data['user','rates','movie'].edge_label
         else:
             if (epoch == epochs):
@@ -289,11 +289,12 @@ def learn(data):
             min_loss = loss
         if(epoch % 10 == 0):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
+            # auc = eval(val_data, 'validation')
 
-    print(f'min_loss after {epochs} epochs : {min_loss:.4f}')
+    print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     end = time.time()
     total_time = end - start
-    print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours')
+    print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
 
     # store the final embeddings
     filepath2 = os.path.split(filepath)[0] + 'temp.pkl'
@@ -345,8 +346,34 @@ def learn_batch(train_loader, is_directed):
             print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
 
+def eval(data, mode = 'validation'):
+    with torch.no_grad():
+        data.to(device)
+        pred = model(data, is_directed)
+        # The ground_truth and the pred shapes should be 1-dimensional
+        # we squeeze them after generation
+        if (type(data) == HeteroData):
+            edge_types = data.edge_types if is_directed else data.edge_types[
+                                                             :(len(data.edge_types)) // 2]
+            # we have ground_truths per edge_label_index
+            ground_truth = torch.empty(0)
+            for edge_type in edge_types:
+                ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
+            ground_truth = ground_truth.squeeze(0)
+        else:
+            ground_truth = data.edge_label
+
+    loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+    print(f'{mode} loss : {loss:.4f}')
+
+    if(mode == 'validation'):
+        auc = roc_auc_score(ground_truth, torch.sigmoid(pred))
+        print()
+        print(f"AUC : {auc:.4f}")
+        return auc
+
 # loader can be test or can be validation
-def eval(loader, is_directed):
+def eval_batch(loader, is_directed):
     preds = []
     ground_truths = []
     for sampled_data in tqdm.tqdm(loader):
@@ -373,7 +400,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/m.dir.none.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
@@ -386,7 +413,7 @@ if __name__ == '__main__':
     # validate_splits(train_data, val_data, test_data)
 
     ## Sampling
-    train_loader = create_mini_batch_loader(train_data)
+    # train_loader = create_mini_batch_loader(train_data)
     # val_loader = create_mini_batch_loader(val_data)
     # test_loader = create_mini_batch_loader(test_data)
 
@@ -396,8 +423,9 @@ if __name__ == '__main__':
     # the train_data is needed to collect info about the metadata
     model,optimizer = create(train_data)
 
-    # learn(train_data)
+    learn(train_data)
     # the sampled_data from mini_batch_loader does not properly show the
     # is_directed status
-    learn_batch(train_loader, is_directed)
-    # eval(test_loader)
+    # learn_batch(train_loader, is_directed)
+    eval(test_data, 'test')
+    # eval_batch(test_loader, is_directed)
