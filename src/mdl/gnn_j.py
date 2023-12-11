@@ -14,6 +14,7 @@ import torch_geometric.transforms as T
 import torch.nn.functional as F
 from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
+from src.mdl.gat import Model as GATModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 import time
@@ -238,7 +239,8 @@ def create_mini_batch_loader(data):
 def create(data):
 
     # model = GSModel(hidden_channels=10, data = data)
-    model = GCNModel(hidden_channels=10, data = data)
+    # model = GCNModel(hidden_channels=10, data = data)
+    model = GATModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
