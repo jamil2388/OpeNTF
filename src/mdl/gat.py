@@ -2,22 +2,20 @@ import torch
 from torch import Tensor
 import torch.nn.functional as F
 from torch.nn import Linear, Dropout
-from torch_geometric.nn import GATv2Conv, to_hetero
+from torch_geometric.nn import GATConv, to_hetero
 from torch_geometric.data import Data,HeteroData
 
 class GAT(torch.nn.Module):
-  def __init__(self, dim_in, dim_h, dim_out, heads=8, add_self_loops = False):
+  def __init__(self, hidden_channels, heads=8, add_self_loops = False):
     super().__init__()
-    self.gat1 = GATv2Conv(dim_in, dim_h, heads=heads,add_self_loops = add_self_loops)
-    self.gat2 = GATv2Conv(dim_h*heads, dim_out, heads=1)
+    self.conv1 = GATConv((-1, -1), hidden_channels, add_self_loops=add_self_loops, heads = heads)
+    # self.gat2 = GATConv((-1, -1), hidden_channels, add_self_loops=add_self_loops, heads=1)
+    self.conv2 = GATConv((-1, -1), hidden_channels, add_self_loops=add_self_loops, heads=1)
 
   def forward(self, x, edge_index):
-    x = F.dropout(x, p=0.6, training=self.training)
-    x = self.gat1(x, edge_index)
-    x = F.elu(x)
-    x = F.dropout(x, p=0.6, training=self.training)
-    x = self.gat2(x, edge_index)
-    return F.log_softmax(x, dim=1)
+      x = F.relu(self.conv1(x, edge_index))
+      x = self.conv2(x, edge_index)
+      return x
 
 # Our final classifier applies the dot-product between source and destination
 # node embeddings to derive edge-level predictions:
@@ -51,7 +49,7 @@ class Model(torch.nn.Module):
             self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
         # Instantiate homogeneous gs:
-        self.gat = GAT(hidden_channels, hidden_channels, hidden_channels)
+        self.gat = GAT(hidden_channels)
 
         if (type(data) == HeteroData):
             # Convert gs model into a heterogeneous variant:
@@ -69,10 +67,10 @@ class Model(torch.nn.Module):
                 x_dict[node_type] = self.node_lin[i](data[node_type].x)
                 # this line is for batching mode
                 # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
-            x_dict = self.gcn(x_dict, data.edge_index_dict)
+            x_dict = self.gat(x_dict, data.edge_index_dict)
         else:
             x = self.node_lin(data.x)
-            x = self.gcn(x, data.edge_index)
+            x = self.gat(x, data.edge_index)
             self.x = x
             # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
 

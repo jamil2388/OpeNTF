@@ -239,8 +239,8 @@ def create_mini_batch_loader(data):
 def create(data):
 
     # model = GSModel(hidden_channels=10, data = data)
-    model = GCNModel(hidden_channels=10, data = data)
-    # model = GATModel(hidden_channels=10, data = data)
+    # model = GCNModel(hidden_channels=10, data = data)
+    model = GATModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
@@ -256,7 +256,7 @@ def learn(data):
     start = time.time()
     is_directed = data.is_directed()
     min_loss = 100000000000
-    epochs = 1000
+    epochs = 100
     emb = {}
 
     for epoch in range(1, epochs + 1):
@@ -406,7 +406,7 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.none.data.pkl'
+    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
