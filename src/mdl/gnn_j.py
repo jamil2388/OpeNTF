@@ -239,8 +239,8 @@ def create_mini_batch_loader(data):
 def create(data):
 
     # model = GSModel(hidden_channels=10, data = data)
-    # model = GCNModel(hidden_channels=10, data = data)
-    model = GATModel(hidden_channels=10, data = data)
+    model = GCNModel(hidden_channels=10, data = data)
+    # model = GATModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
