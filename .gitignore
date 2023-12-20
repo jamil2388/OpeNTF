@@ -14,6 +14,7 @@ src/tmp.py
 *.log
 *.pred
 output/toy.dblp.v12.json/nmt/
+src/mdl/data/
 *.7z
 data/raw/dblp/dblp.v12.json
 *.npy
