@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
 from src.mdl.gat import Model as GATModel
+from src.mdl.gin import Model as GINModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 import time
@@ -240,7 +241,8 @@ def create(data):
 
     # model = GSModel(hidden_channels=10, data = data)
     # model = GCNModel(hidden_channels=10, data = data)
-    model = GATModel(hidden_channels=10, data = data)
+    # model = GATModel(hidden_channels=10, data = data)
+    model = GINModel(hidden_channels=10, data = data)
     # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
@@ -406,7 +408,8 @@ if __name__ == '__main__':
     heterogeneous_data = create_custom_heterogeneous_data()
 
     # load opentf datasets
-    filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
+    # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
+    filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
     data = load_data(filepath)
     is_directed = data.is_directed()
 
