@@ -21,12 +21,23 @@ class GIN(torch.nn.Module):
             Sequential(Linear(dim_h, dim_h), BatchNorm1d(dim_h), ReLU(),
                        Linear(dim_h, dim_h), ReLU()))
 
+        # need to justify why we need these two linear layers
+        self.lin1 = Linear(dim_h, dim_h)
+        self.lin2 = Linear(dim_h, dim_h)
+
     def forward(self, x, edge_index):
         # Node embeddings
         h = self.conv1(x, edge_index)
         h = self.conv2(h, edge_index)
         h = self.conv3(h, edge_index)
 
+        # Classifier
+        h = self.lin1(h)
+        h = h.relu()
+        h = F.dropout(h, p=0.5, training=self.training)
+        h = self.lin2(h)
+
+        # should we return a softmaxed version of h? (used in gin example)
         return h
 
 

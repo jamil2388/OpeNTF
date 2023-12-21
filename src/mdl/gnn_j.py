@@ -184,7 +184,7 @@ def define_splits(data):
         num_val=0.1,
         num_test=0.1,
         disjoint_train_ratio=0.3,
-        neg_sampling_ratio=1.0,
+        neg_sampling_ratio=0.0,
         add_negative_train_samples=False,
         edge_types= edge_types,
         rev_edge_types=rev_edge_types,
@@ -350,22 +350,24 @@ def learn_batch(train_loader, is_directed):
             print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
 
+@torch.no_grad()
 def eval(data, mode = 'validation'):
-    with torch.no_grad():
-        data.to(device)
-        pred = model(data, is_directed)
-        # The ground_truth and the pred shapes should be 1-dimensional
-        # we squeeze them after generation
-        if (type(data) == HeteroData):
-            edge_types = data.edge_types if is_directed else data.edge_types[
-                                                             :(len(data.edge_types)) // 2]
-            # we have ground_truths per edge_label_index
-            ground_truth = torch.empty(0)
-            for edge_type in edge_types:
-                ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
-            ground_truth = ground_truth.squeeze(0)
-        else:
-            ground_truth = data.edge_label
+    model.eval()
+
+    data.to(device)
+    pred = model(data, is_directed)
+    # The ground_truth and the pred shapes should be 1-dimensional
+    # we squeeze them after generation
+    if (type(data) == HeteroData):
+        edge_types = data.edge_types if is_directed else data.edge_types[
+                                                         :(len(data.edge_types)) // 2]
+        # we have ground_truths per edge_label_index
+        ground_truth = torch.empty(0)
+        for edge_type in edge_types:
+            ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
+        ground_truth = ground_truth.squeeze(0)
+    else:
+        ground_truth = data.edge_label
 
     loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
 
