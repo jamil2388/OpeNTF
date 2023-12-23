@@ -237,13 +237,20 @@ def create_mini_batch_loader(data):
         print(f'---------------------------------------\n')
     return mini_batch_loader
 
-def create(data):
+def create(data, model_name):
+    if (model_name == 'gcn'):
+        # gcn
+        model = GCNModel(hidden_channels=10, data=data)
+    elif (model_name == 'gs'):
+        # gs
+        model = GSModel(hidden_channels=10, data = data)
+    elif (model_name == 'gat'):
+        # gat
+        model = GATModel(hidden_channels=10, data = data)
+    elif (model_name == 'gin'):
+        # gin
+        model = GINModel(hidden_channels=10, data=data)
 
-    # model = GSModel(hidden_channels=10, data = data)
-    # model = GCNModel(hidden_channels=10, data = data)
-    # model = GATModel(hidden_channels=10, data = data)
-    model = GINModel(hidden_channels=10, data = data)
-    # model = Model_bk(hidden_channels=10, data = data)
     print(model)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -294,7 +301,7 @@ def learn(data):
         if(epoch % 10 == 0):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
-
+    torch.save(model.state_dict(), f'{model_output}/gnn_model.pt', pickle_protocol=4)
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     end = time.time()
     total_time = end - start
@@ -406,37 +413,48 @@ def eval_batch(loader, is_directed):
     return auc
 
 if __name__ == '__main__':
-    homogeneous_data = create_custom_homogeneous_data()
-    heterogeneous_data = create_custom_heterogeneous_data()
+    # homogeneous_data = create_custom_homogeneous_data()
+    # heterogeneous_data = create_custom_heterogeneous_data()
 
-    # load opentf datasets
-    # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
-    filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
-    data = load_data(filepath)
-    is_directed = data.is_directed()
+    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    for domain in ['dblp/toy.dblp.v12.json']:
+        for model_name in ['gcn', 'gs', 'gat', 'gin']:
+            for graph_type in ['m', 'sm', 'stm']:
+                for agg in ['none', 'mean']:
+                    if (model_name == 'gcn' and (graph_type == 'sm' or graph_type == 'stm')):
+                        continue
 
-    # # draw the graph
-    # draw_graph(data)
+                    filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
+                    model_output = f'../../data/preprocessed/{domain}/{model_name}'
+                    if not os.path.isdir(model_output): os.makedirs(model_output)
+                    # load opentf datasets
+                    # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
+                    # filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
+                    data = load_data(filepath)
+                    is_directed = data.is_directed()
 
-    # train_data, val_data, test_data = define_splits(homogeneous_data)
-    # train_data, val_data, test_data = define_splits(heterogeneous_data)
-    train_data, val_data, test_data = define_splits(data)
-    # validate_splits(train_data, val_data, test_data)
+                    # # draw the graph
+                    # draw_graph(data)
 
-    ## Sampling
-    # train_loader = create_mini_batch_loader(train_data)
-    # val_loader = create_mini_batch_loader(val_data)
-    # test_loader = create_mini_batch_loader(test_data)
+                    # train_data, val_data, test_data = define_splits(homogeneous_data)
+                    # train_data, val_data, test_data = define_splits(heterogeneous_data)
+                    train_data, val_data, test_data = define_splits(data)
+                    # validate_splits(train_data, val_data, test_data)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Device: '{device}'")
+                    ## Sampling
+                    # train_loader = create_mini_batch_loader(train_data)
+                    # val_loader = create_mini_batch_loader(val_data)
+                    # test_loader = create_mini_batch_loader(test_data)
 
-    # the train_data is needed to collect info about the metadata
-    model,optimizer = create(train_data)
+                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    print(f"Device: '{device}'")
 
-    learn(train_data)
-    # the sampled_data from mini_batch_loader does not properly show the
-    # is_directed status
-    # learn_batch(train_loader, is_directed)
-    eval(test_data, 'test')
-    # eval_batch(test_loader, is_directed)
+                    # the train_data is needed to collect info about the metadata
+                    model,optimizer = create(train_data, model_name)
+
+                    learn(train_data)
+                    # the sampled_data from mini_batch_loader does not properly show the
+                    # is_directed status
+                    # learn_batch(train_loader, is_directed)
+                    eval(test_data, 'test')
+                    # eval_batch(test_loader, is_directed)
