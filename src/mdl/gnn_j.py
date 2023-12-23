@@ -302,15 +302,15 @@ def learn(data):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
     torch.save(model.state_dict(), f'{model_output}/gnn_model.pt', pickle_protocol=4)
+    if (type(data) == HeteroData):
+        torch.save(model.x_dict, f'{model_output}/gnn_emb.pt', pickle_protocol=4)
+    else:
+        torch.save(model.x, f'{model_output}/gnn_emb.pt', pickle_protocol=4)
+
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     end = time.time()
     total_time = end - start
     print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
-
-    # store the final embeddings
-    filepath2 = os.path.split(filepath)[0] + 'temp.pkl'
-    with open(filepath2, 'wb') as f:
-        pickle.dump(emb, f)
 
 
 # learning with batching
@@ -416,16 +416,17 @@ if __name__ == '__main__':
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
 
-    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
-    for domain in ['dblp/toy.dblp.v12.json']:
+    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    # for domain in ['dblp/toy.dblp.v12.json']:
         for model_name in ['gcn', 'gs', 'gat', 'gin']:
             for graph_type in ['m', 'sm', 'stm']:
+            # for graph_type in ['stm']:
                 for agg in ['none', 'mean']:
-                    if (model_name == 'gcn' and (graph_type == 'sm' or graph_type == 'stm')):
+                    if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
-                    model_output = f'../../data/preprocessed/{domain}/{model_name}'
+                    model_output = f'../../data/preprocessed/{domain}/{model_name}/{graph_type}.undir.{agg}'
                     if not os.path.isdir(model_output): os.makedirs(model_output)
                     # load opentf datasets
                     # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
