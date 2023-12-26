@@ -41,11 +41,19 @@ class Model(torch.nn.Module):
             # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
             # these two are generated such that both of them has the same shape and they can be added together
             for i, node_type in enumerate(node_types):
-                self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
-                self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
+                if(data.is_cuda):
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels).cuda())
+                    self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
+                else:
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
+                    self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
         else:
-            self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
-            self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
+            if (data.is_cuda):
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels).cuda()
+                self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
+            else:
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
+                self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
         # Instantiate homogeneous gs:
         self.gs = GS(hidden_channels)
@@ -81,7 +89,7 @@ class Model(torch.nn.Module):
 
 
         # create an empty tensor and concatenate the preds afterwards
-        preds = torch.empty(0)
+        preds = torch.empty(0).to(device = 'cuda' if data.is_cuda else 'cpu')
 
         if (type(data) == HeteroData):
             # generate predictions per edge_label_index type

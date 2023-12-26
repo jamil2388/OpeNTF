@@ -78,7 +78,7 @@ class Model(torch.nn.Module):
 
 
         # create an empty tensor and concatenate the preds afterwards
-        preds = torch.empty(0)
+        preds = torch.empty(0).to(device = 'cuda' if data.is_cuda else 'cpu')
 
         if (type(data) == HeteroData):
             # generate predictions per edge_label_index type

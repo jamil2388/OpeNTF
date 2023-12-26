@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch_geometric.transforms as T
 import torch.nn.functional as F
+
+import graph_params
 from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
 from src.mdl.gat import Model as GATModel
@@ -20,6 +22,7 @@ from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 import time
 from sklearn.metrics import roc_auc_score
+import logging
 
 '''
 Class definitions
@@ -46,8 +49,9 @@ def load_data(filepath):
     with open(filepath, 'rb') as f:
         data = pickle.load(f)
 
-    print(f'filepath : {filepath}')
-    print(data)
+    print(f'Loading data from filepath : {filepath}')
+    logging.info(f'Loading data from filepath : {filepath}\n')
+    # print(data)
     return data
 
 def create_custom_homogeneous_data():
@@ -278,7 +282,7 @@ def learn(data):
             edge_types = data.edge_types if is_directed else data.edge_types[
                                                                      :(len(data.edge_types)) // 2]
             # we have ground_truths per edge_label_index
-            ground_truth = torch.empty(0)
+            ground_truth = torch.empty(0).to(device)
             for edge_type in edge_types:
                 ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
             ground_truth = ground_truth.squeeze(0)
@@ -300,17 +304,24 @@ def learn(data):
             min_loss = loss
         if(epoch % 10 == 0):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
+            logging.info(f'Epoch : {epoch}, Loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
-    torch.save(model.state_dict(), f'{model_output}/gnn_model.pt', pickle_protocol=4)
+    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.model.pt', pickle_protocol=4)
     if (type(data) == HeteroData):
-        torch.save(model.x_dict, f'{model_output}/gnn_emb.pt', pickle_protocol=4)
+        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt', pickle_protocol=4)
     else:
-        torch.save(model.x, f'{model_output}/gnn_emb.pt', pickle_protocol=4)
+        torch.save(model.x, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt', pickle_protocol=4)
+
+    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt\n')
 
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
+    logging.info(f'\nMinimum loss after {epochs} epochs : {min_loss:.4f}\n')
+
+
     end = time.time()
     total_time = end - start
     print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
+    logging.info(f'Total time : {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
 
 
 # learning with batching
@@ -369,7 +380,7 @@ def eval(data, mode = 'validation'):
         edge_types = data.edge_types if is_directed else data.edge_types[
                                                          :(len(data.edge_types)) // 2]
         # we have ground_truths per edge_label_index
-        ground_truth = torch.empty(0)
+        ground_truth = torch.empty(0).to(device)
         for edge_type in edge_types:
             ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
         ground_truth = ground_truth.squeeze(0)
@@ -379,6 +390,8 @@ def eval(data, mode = 'validation'):
     loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
 
     print(f'{mode} loss : {loss:.4f}')
+    logging.info(f'{mode} loss : {loss:.4f}')
+
     print(f'pred = {pred}')
     print(f'ground_truth = {ground_truth}')
     print(f'pred = {pred.sigmoid()}')
@@ -416,8 +429,19 @@ if __name__ == '__main__':
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
 
-    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
-    # for domain in ['dblp/toy.dblp.v12.json']:
+    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    for domain in ['dblp/toy.dblp.v12.json']:
+
+        log_filepath = f'../../data/preprocessed/{domain}'
+        if not os.path.isdir(log_filepath): os.makedirs(log_filepath)
+
+        logging.basicConfig(filename=f'{log_filepath}/emb.ns{graph_params.settings["model"]["negative_sampling"]}.log', format = '%(message)s', filemode = 'w', level=logging.INFO)
+        logging.info(f'\n-------------------------------------')
+        logging.info(f'-------------------------------------')
+        logging.info(f'Domain/Data : {domain}')
+        logging.info(f'-------------------------------------')
+        logging.info(f'-------------------------------------\n')
+
         for model_name in ['gcn', 'gs', 'gat', 'gin']:
             for graph_type in ['m', 'sm', 'stm']:
             # for graph_type in ['stm']:
@@ -427,7 +451,13 @@ if __name__ == '__main__':
 
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
                     model_output = f'../../data/preprocessed/{domain}/{model_name}/{graph_type}.undir.{agg}'
+                    # model_output = f'../../data/preprocessed/{domain}/{model_name}'
                     if not os.path.isdir(model_output): os.makedirs(model_output)
+
+                    logging.info(f'\n-------------------------------------------------------------------------------')
+                    logging.info(f'Model : {model_name} || Graph Type : {graph_type} || Aggregation Type : {agg}')
+                    logging.info(f'-------------------------------------------------------------------------------\n')
+
                     # load opentf datasets
                     # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
                     # filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
@@ -449,6 +479,7 @@ if __name__ == '__main__':
 
                     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
+                    train_data.to(device)
 
                     # the train_data is needed to collect info about the metadata
                     model,optimizer = create(train_data, model_name)

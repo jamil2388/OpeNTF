@@ -10,6 +10,7 @@ this file contains the parameters to do all the graph based tasks
 
 settings = {
     'model':{
+            'negative_sampling' : 0,
             'gnn':{},
             'gcn':{},
             'gat':{},
