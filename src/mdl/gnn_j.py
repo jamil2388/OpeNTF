@@ -256,9 +256,7 @@ def create(data, model_name):
         model = GINModel(hidden_channels=10, data=data)
 
     print(model)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Device: '{device}'")
+    print(f'\nDevice = {device}')
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -429,7 +427,8 @@ if __name__ == '__main__':
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
 
-    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
+    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
+    for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
         log_filepath = f'../../data/preprocessed/{domain}'
@@ -442,9 +441,9 @@ if __name__ == '__main__':
         logging.info(f'-------------------------------------')
         logging.info(f'-------------------------------------\n')
 
-        # for model_name in ['gcn', 'gs', 'gat', 'gin']:
-        for model_name in ['gat']:
-            for graph_type in ['sm', 'stm']:
+        for model_name in ['gcn', 'gs', 'gat', 'gin']:
+        # for model_name in ['gat']:
+            for graph_type in ['m', 'sm', 'stm']:
             # for graph_type in ['stm']:
                 for agg in ['none', 'mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
@@ -478,7 +477,7 @@ if __name__ == '__main__':
                     # val_loader = create_mini_batch_loader(val_data)
                     # test_loader = create_mini_batch_loader(test_data)
 
-                    if(model_name == 'gat'):
+                    if(model_name == 'gat' and graph_type == 'm'):
                         device = torch.device('cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
