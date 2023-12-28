@@ -1,3 +1,5 @@
+import datetime
+
 import torch
 import torch_geometric.utils
 from torch import Tensor
@@ -5,6 +7,7 @@ import os
 from torch_geometric.data import download_url, extract_zip
 import pandas as pd
 import pickle
+from torch.profiler import profile, ProfilerActivity
 from torch_geometric.data import HeteroData, Data
 from torch_geometric.loader import LinkNeighborLoader, HGTLoader
 import networkx as nx
@@ -270,7 +273,25 @@ def learn(data):
     epochs = 100
     emb = {}
 
+    # adding profiler for experimental steps
+    ts = datetime.datetime.now()
+    profiler_log_dir = '../../data/preprocessed/logs'
+    if not os.path.isdir(profiler_log_dir): os.makedirs(profiler_log_dir)
+
+    prof = profile(
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(f'{profiler_log_dir}/gnn.{ts.day}.{ts.month}.{ts.year}_{ts.hour}.{ts.minute}.{ts.second}'),
+        record_shapes=True,
+        with_stack=True)
+
+    prof.start()
+
     for epoch in range(1, epochs + 1):
+        if(epoch > 1 + 1 + 3):
+            break
+        prof.step()
+
         optimizer.zero_grad()
         data.to(device)
         pred = model(data, is_directed)
@@ -321,6 +342,7 @@ def learn(data):
     print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
     logging.info(f'Total time : {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
 
+    prof.stop()
 
 # learning with batching
 def learn_batch(train_loader, is_directed):
@@ -428,8 +450,9 @@ if __name__ == '__main__':
     # heterogeneous_data = create_custom_heterogeneous_data()
 
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
+    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
     # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
-    for domain in ['gith/data.csv.filtered.mt5.ts2']:
+    # for domain in ['gith/data.csv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
         log_filepath = f'../../data/preprocessed/{domain}'
@@ -442,11 +465,12 @@ if __name__ == '__main__':
         logging.info(f'-------------------------------------')
         logging.info(f'-------------------------------------\n')
 
-        for model_name in ['gcn', 'gs', 'gat', 'gin']:
-        # for model_name in ['gat']:
-            for graph_type in ['m', 'sm', 'stm']:
-            # for graph_type in ['stm']:
-                for agg in ['none', 'mean']:
+        # for model_name in ['gcn', 'gs', 'gat', 'gin']:
+        for model_name in ['gat']:
+            # for graph_type in ['m', 'sm', 'stm']:
+            for graph_type in ['stm']:
+                # for agg in ['none', 'mean']:
+                for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 
@@ -479,7 +503,8 @@ if __name__ == '__main__':
                     # test_loader = create_mini_batch_loader(test_data)
 
                     if(model_name == 'gat' and graph_type in ['sm','stm']):
-                        device = torch.device('cpu')
+                        # device = torch.device('cpu')
+                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
