@@ -428,7 +428,8 @@ if __name__ == '__main__':
     # heterogeneous_data = create_custom_heterogeneous_data()
 
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
-    for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
+    # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
+    for domain in ['gith/data.csv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
         log_filepath = f'../../data/preprocessed/{domain}'
@@ -477,7 +478,7 @@ if __name__ == '__main__':
                     # val_loader = create_mini_batch_loader(val_data)
                     # test_loader = create_mini_batch_loader(test_data)
 
-                    if(model_name == 'gat' and graph_type == 'm'):
+                    if(model_name == 'gat' and graph_type in ['sm','stm']):
                         device = torch.device('cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
