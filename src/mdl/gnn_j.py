@@ -245,18 +245,19 @@ def create_mini_batch_loader(data):
     return mini_batch_loader
 
 def create(data, model_name):
+
     if (model_name == 'gcn'):
         # gcn
-        model = GCNModel(hidden_channels=10, data=data)
+        model = GCNModel(hidden_channels=hidden_channels, data=data)
     elif (model_name == 'gs'):
         # gs
-        model = GSModel(hidden_channels=10, data = data)
+        model = GSModel(hidden_channels=hidden_channels, data = data)
     elif (model_name == 'gat'):
         # gat
-        model = GATModel(hidden_channels=10, data = data)
+        model = GATModel(hidden_channels=hidden_channels, data = data)
     elif (model_name == 'gin'):
         # gin
-        model = GINModel(hidden_channels=10, data=data)
+        model = GINModel(hidden_channels=hidden_channels, data=data)
 
     print(model)
     print(f'\nDevice = {device}')
@@ -270,7 +271,7 @@ def learn(data):
     start = time.time()
     is_directed = data.is_directed()
     min_loss = 100000000000
-    epochs = 100
+    epochs = graph_params.settings['model']['epochs']
     emb = {}
 
     # adding profiler for experimental steps
@@ -278,19 +279,19 @@ def learn(data):
     profiler_log_dir = '../../data/preprocessed/logs'
     if not os.path.isdir(profiler_log_dir): os.makedirs(profiler_log_dir)
 
-    prof = profile(
-        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler(f'{profiler_log_dir}/gnn.{ts.day}.{ts.month}.{ts.year}_{ts.hour}.{ts.minute}.{ts.second}'),
-        record_shapes=True,
-        with_stack=True)
+    # prof = profile(
+    #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+    #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(f'{profiler_log_dir}/gnn.{ts.day}.{ts.month}.{ts.year}_{ts.hour}.{ts.minute}.{ts.second}'),
+    #     record_shapes=True,
+    #     with_stack=True)
 
-    prof.start()
+    # prof.start()
 
     for epoch in range(1, epochs + 1):
-        if(epoch > 1 + 1 + 3):
-            break
-        prof.step()
+        # if(epoch > 1 + 1 + 3):
+        #     break
+        # prof.step()
 
         optimizer.zero_grad()
         data.to(device)
@@ -325,13 +326,13 @@ def learn(data):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
             logging.info(f'Epoch : {epoch}, Loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
-    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.model.pt', pickle_protocol=4)
+    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.model.pt', pickle_protocol=4)
     if (type(data) == HeteroData):
-        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt', pickle_protocol=4)
+        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt', pickle_protocol=4)
     else:
-        torch.save(model.x, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt', pickle_protocol=4)
+        torch.save(model.x, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt', pickle_protocol=4)
 
-    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.emb.pt\n')
+    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt\n')
 
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     logging.info(f'\nMinimum loss after {epochs} epochs : {min_loss:.4f}\n')
@@ -342,7 +343,7 @@ def learn(data):
     print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
     logging.info(f'Total time : {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
 
-    prof.stop()
+    # prof.stop()
 
 # learning with batching
 def learn_batch(train_loader, is_directed):
@@ -449,6 +450,8 @@ if __name__ == '__main__':
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
 
+    hidden_channels = graph_params.settings['model']['hidden_channels']
+
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
     for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
     # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
@@ -465,12 +468,12 @@ if __name__ == '__main__':
         logging.info(f'-------------------------------------')
         logging.info(f'-------------------------------------\n')
 
-        # for model_name in ['gcn', 'gs', 'gat', 'gin']:
-        for model_name in ['gat']:
-            # for graph_type in ['m', 'sm', 'stm']:
-            for graph_type in ['stm']:
-                # for agg in ['none', 'mean']:
-                for agg in ['mean']:
+        for model_name in ['gcn', 'gs', 'gat', 'gin']:
+        # for model_name in ['gat']:
+            for graph_type in ['m', 'sm', 'stm']:
+            # for graph_type in ['sm']:
+                for agg in ['none', 'mean']:
+                # for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 

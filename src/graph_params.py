@@ -11,9 +11,13 @@ this file contains the parameters to do all the graph based tasks
 settings = {
     'model':{
             'negative_sampling' : 0,
+            'hidden_channels' : 32,
+            'epochs' : 100,
             'gnn':{},
             'gcn':{},
-            'gat':{},
+            'gat':{
+                'heads' : 3,
+            },
             'gin':{},
             'n2v':{
                 'edge_types' : {
