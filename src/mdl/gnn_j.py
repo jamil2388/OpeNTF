@@ -451,24 +451,26 @@ if __name__ == '__main__':
     # heterogeneous_data = create_custom_heterogeneous_data()
 
     hidden_channels = graph_params.settings['model']['hidden_channels']
+    heads = graph_params.settings['model']['gat']['heads']
 
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
-    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
-    # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
+    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    # for domain in ['imdb/title.basics.tsv.filtered.mt5.ts2']:
+    for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
     # for domain in ['gith/data.csv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
         log_filepath = f'../../data/preprocessed/{domain}'
         if not os.path.isdir(log_filepath): os.makedirs(log_filepath)
 
-        logging.basicConfig(filename=f'{log_filepath}/emb.ns{graph_params.settings["model"]["negative_sampling"]}.log', format = '%(message)s', filemode = 'w', level=logging.INFO)
+        logging.basicConfig(filename=f'{log_filepath}/emb.ns{graph_params.settings["model"]["negative_sampling"]}.h{heads}.d{hidden_channels}.log', format = '%(message)s', filemode = 'w', level=logging.INFO)
         logging.info(f'\n-------------------------------------')
         logging.info(f'-------------------------------------')
         logging.info(f'Domain/Data : {domain}')
         logging.info(f'-------------------------------------')
         logging.info(f'-------------------------------------\n')
 
-        for model_name in ['gcn', 'gs', 'gat', 'gin']:
+        for model_name in ['gcn', 'gs', 'gin', 'gat']:
         # for model_name in ['gat']:
             for graph_type in ['m', 'sm', 'stm']:
             # for graph_type in ['sm']:
@@ -505,9 +507,9 @@ if __name__ == '__main__':
                     # val_loader = create_mini_batch_loader(val_data)
                     # test_loader = create_mini_batch_loader(test_data)
 
-                    if(model_name == 'gat' and graph_type in ['sm','stm']):
-                        # device = torch.device('cpu')
-                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    if(model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
+                        device = torch.device('cpu')
+                        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
