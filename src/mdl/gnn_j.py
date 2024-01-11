@@ -454,9 +454,9 @@ if __name__ == '__main__':
     heads = graph_params.settings['model']['gat']['heads']
 
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
-    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
     # for domain in ['imdb/title.basics.tsv.filtered.mt5.ts2']:
-    for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
+    # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
     # for domain in ['gith/data.csv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
@@ -475,7 +475,8 @@ if __name__ == '__main__':
             # for graph_type in ['m', 'sm', 'stm']:
             for graph_type in ['sm']:
                 # for agg in ['none', 'mean']:
-                for agg in ['mean']:
+                for agg in ['none']:
+                # for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 
