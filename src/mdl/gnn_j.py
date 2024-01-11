@@ -470,12 +470,12 @@ if __name__ == '__main__':
         logging.info(f'-------------------------------------')
         logging.info(f'-------------------------------------\n')
 
-        for model_name in ['gcn', 'gs', 'gin', 'gat']:
-        # for model_name in ['gat']:
-            for graph_type in ['m', 'sm', 'stm']:
-            # for graph_type in ['sm']:
-                for agg in ['none', 'mean']:
-                # for agg in ['mean']:
+        # for model_name in ['gcn', 'gs', 'gin', 'gat']:
+        for model_name in ['gat']:
+            # for graph_type in ['m', 'sm', 'stm']:
+            for graph_type in ['sm']:
+                # for agg in ['none', 'mean']:
+                for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 
