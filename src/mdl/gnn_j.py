@@ -4,6 +4,10 @@ import torch
 import torch_geometric.utils
 from torch import Tensor
 import os
+import sys
+sys.path.append('..')
+sys.path.append('../..')
+
 from torch_geometric.data import download_url, extract_zip
 import pandas as pd
 import pickle
@@ -16,7 +20,7 @@ import numpy as np
 import torch_geometric.transforms as T
 import torch.nn.functional as F
 
-import graph_params
+import src.graph_params as graph_params
 from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
 from src.mdl.gat import Model as GATModel
