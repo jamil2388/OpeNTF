@@ -9,7 +9,6 @@ sys.path.append('..')
 sys.path.append('../..')
 
 from torch_geometric.data import download_url, extract_zip
-import pandas as pd
 import pickle
 from torch.profiler import profile, ProfilerActivity
 from torch_geometric.data import HeteroData, Data
@@ -153,24 +152,6 @@ def create_custom_heterogeneous_data():
 
     data.validate(raise_on_error = True)
     return data
-
-# check the characteristics of the splits
-def validate_splits(train_data, val_data, test_data):
-    print()
-    print(f'-------------------Checking the Splits-----------------------')
-    print()
-    print(f'The splits are : \n')
-    print(f'Train Data : \n{train_data}')
-    print(f'Val Data : \n{val_data}')
-    print(f'Test Data : \n{test_data}')
-
-    if(type(train_data) == Data):
-        # convert to df to compare the overlaps
-        train_df = pd.DataFrame(train_data.numpy())
-        val_df = pd.DataFrame(val_data.numpy())
-        test_df = pd.DataFrame(test_data.numpy())
-
-        train_test_df = pd.merge(train_df, test_df, how = 'inner', on = train_data.columns)
 
 
 # define the train, valid, test splits
