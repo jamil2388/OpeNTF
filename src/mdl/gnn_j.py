@@ -260,10 +260,10 @@ def learn(data):
     epochs = graph_params.settings['model']['epochs']
     emb = {}
 
-    # adding profiler for experimental steps
-    ts = datetime.datetime.now()
-    profiler_log_dir = '../../data/preprocessed/logs'
-    if not os.path.isdir(profiler_log_dir): os.makedirs(profiler_log_dir)
+    # # adding profiler for experimental steps
+    # ts = datetime.datetime.now()
+    # profiler_log_dir = '../../data/preprocessed/logs'
+    # if not os.path.isdir(profiler_log_dir): os.makedirs(profiler_log_dir)
 
     # prof = profile(
     #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -440,8 +440,8 @@ def addargs(parser):
     parser.add_argument('-gnn_models', nargs = '+', help = 'the gnn models to use for embedding generation')
     parser.add_argument('-graph_types', nargs = '+', help = 'the graph types to use')
     parser.add_argument('-agg', nargs = '+', help = 'the aggregation types to use')
-    parser.add_argument('-dim', help = 'the embedding dimension to use')
-    parser.add_argument('-heads', help = 'the number of computational heads to use for gat models')
+    parser.add_argument('-dim', type = int, help = 'the embedding dimension to use')
+    parser.add_argument('-heads', type = int, help = 'the number of computational heads to use for gat models')
 
     args = parser.parse_args()
     return args
@@ -465,7 +465,7 @@ def set_params(args):
 # -heads 3)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Neural Team Formation')
+    parser = argparse.ArgumentParser(description='GNN for OpeNTF')
     args = addargs(parser)
 
     set_params(args)
