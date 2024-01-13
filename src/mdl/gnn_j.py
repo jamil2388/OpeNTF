@@ -305,6 +305,8 @@ def learn(data):
         loss.backward()
         optimizer.step()
 
+        print(f'epoch : {epoch}, loss : {loss:.4f}, time elapsed : {(time.time() - start) / 60:.2f} min')
+
         if(loss < min_loss):
             min_loss = loss
         if(epoch % 10 == 0):
@@ -317,6 +319,7 @@ def learn(data):
     else:
         torch.save(model.x, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt', pickle_protocol=4)
 
+    print(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt\n')
     logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt\n')
 
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
@@ -457,10 +460,10 @@ if __name__ == '__main__':
 
         # for model_name in ['gcn', 'gs', 'gin', 'gat']:
         for model_name in ['gat']:
-            # for graph_type in ['m', 'sm', 'stm']:
-            for graph_type in ['sm']:
-                # for agg in ['none', 'mean']:
-                for agg in ['none']:
+            for graph_type in ['m', 'sm', 'stm']:
+            # for graph_type in ['sm']:
+                for agg in ['none', 'mean']:
+                # for agg in ['none']:
                 # for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
@@ -493,9 +496,10 @@ if __name__ == '__main__':
                     # val_loader = create_mini_batch_loader(val_data)
                     # test_loader = create_mini_batch_loader(test_data)
 
+                    # set the device
                     if(model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
-                        device = torch.device('cpu')
-                        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                        # device = torch.device('cpu')
+                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
