@@ -29,6 +29,7 @@ import tqdm as tqdm
 import time
 from sklearn.metrics import roc_auc_score
 import logging
+import argparse
 
 '''
 Class definitions
@@ -434,15 +435,49 @@ def eval_batch(loader, is_directed):
     print(f"AUC: {auc:.4f}")
     return auc
 
-if __name__ == '__main__':
-    # homogeneous_data = create_custom_homogeneous_data()
-    # heterogeneous_data = create_custom_heterogeneous_data()
+def addargs(parser):
+    parser.add_argument('-domains', nargs = '+', help = 'the domain of the dataset along with the version')
+    parser.add_argument('-gnn_models', nargs = '+', help = 'the gnn models to use for embedding generation')
+    parser.add_argument('-graph_types', nargs = '+', help = 'the graph types to use')
+    parser.add_argument('-agg', nargs = '+', help = 'the aggregation types to use')
+    parser.add_argument('-dim', help = 'the embedding dimension to use')
+    parser.add_argument('-heads', help = 'the number of computational heads to use for gat models')
 
+    args = parser.parse_args()
+    return args
+
+def set_params(args):
+
+    graph_params.settings['model']['hidden_channels'] = args.dim
+    graph_params.settings['model']['gat']['heads'] = args.heads
+
+# sample command including all the args
+# cd OpeNTF_Jamil/src/mdl
+# python gnn_j.py -domains dblp/dblp.v12.json.filtered.mt5.ts2 imdb/title.basics.tsv.filtered.mt5.ts2 -gnn_models gcn gs gin gat -graph_types m sm stm -agg none mean -dim 32 -heads 3
+
+# same command in multiline
+# (python gnn_j.py
+# -domains dblp/dblp.v12.json.filtered.mt5.ts2 imdb/title.basics.tsv.filtered.mt5.ts2
+# -gnn_models gcn gs gin gat
+# -graph_types m sm stm
+# -agg none mean
+# -dim 32
+# -heads 3)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Neural Team Formation')
+    args = addargs(parser)
+
+    set_params(args)
     hidden_channels = graph_params.settings['model']['hidden_channels']
     heads = graph_params.settings['model']['gat']['heads']
 
+    # homogeneous_data = create_custom_homogeneous_data()
+    # heterogeneous_data = create_custom_heterogeneous_data()
+
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
-    for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
+    for domain in args.domains:
+    # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2']:
     # for domain in ['imdb/title.basics.tsv.filtered.mt5.ts2']:
     # for domain in ['uspt/patent.tsv.filtered.mt5.ts2']:
     # for domain in ['gith/data.csv.filtered.mt5.ts2']:
@@ -459,14 +494,19 @@ if __name__ == '__main__':
         logging.info(f'-------------------------------------\n')
 
         # for model_name in ['gcn', 'gs', 'gin', 'gat']:
-        for model_name in ['gat']:
-            for graph_type in ['m', 'sm', 'stm']:
+        for model_name in args.gnn_models:
+        # for model_name in ['gat']:
+            for graph_type in args.graph_types:
+            # for graph_type in ['m', 'sm', 'stm']:
             # for graph_type in ['sm']:
-                for agg in ['none', 'mean']:
+                for agg in args.agg:
+                # for agg in ['none', 'mean']:
                 # for agg in ['none']:
                 # for agg in ['mean']:
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
+
+                    print(f'\nargs : {args}')
 
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
                     model_output = f'../../data/preprocessed/{domain}/{model_name}/{graph_type}.undir.{agg}'
@@ -512,6 +552,7 @@ if __name__ == '__main__':
                     # the sampled_data from mini_batch_loader does not properly show the
                     # is_directed status
                     # learn_batch(train_loader, is_directed)
+                    torch.cuda.empty_cache()
                     eval(test_data, 'test')
                     # eval_batch(test_loader, is_directed)
                     torch.cuda.empty_cache()
