@@ -8,10 +8,20 @@ this file contains the parameters to do all the graph based tasks
 
 '''
 
+import torch
+import numpy as np
+import random
+
+random.seed(0)
+torch.manual_seed(0)
+torch.cuda.manual_seed_all(0)
+
+np.random.seed(0)
+
 settings = {
     'model':{
             'negative_sampling' : 0,
-            'hidden_channels' : 32,
+            'hidden_channels' : 16,
             'epochs' : 100,
             'gnn':{},
             'gcn':{},
