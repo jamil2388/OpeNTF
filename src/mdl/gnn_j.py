@@ -442,6 +442,7 @@ def addargs(parser):
     parser.add_argument('-agg', nargs = '+', help = 'the aggregation types to use')
     parser.add_argument('-dim', type = int, help = 'the embedding dimension to use')
     parser.add_argument('-heads', type = int, help = 'the number of computational heads to use for gat models')
+    parser.add_argument('--use_cpu', type = int, help = '1 if you want gat to use cpu')
 
     args = parser.parse_args()
     return args
@@ -537,12 +538,13 @@ if __name__ == '__main__':
                     # test_loader = create_mini_batch_loader(test_data)
 
                     # set the device
-                    if(model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
-                        # device = torch.device('cpu')
-                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
+                        device = torch.device('cpu')
+                        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     else:
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
+                    torch.cuda.empty_cache()
                     train_data.to(device)
 
                     # the train_data is needed to collect info about the metadata
