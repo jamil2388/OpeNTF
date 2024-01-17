@@ -314,14 +314,14 @@ def learn(data):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
             logging.info(f'Epoch : {epoch}, Loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
-    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.model.pt', pickle_protocol=4)
+    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.model.pt', pickle_protocol=4)
     if (type(data) == HeteroData):
-        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt', pickle_protocol=4)
+        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt', pickle_protocol=4)
     else:
-        torch.save(model.x, f'{model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt', pickle_protocol=4)
+        torch.save(model.x, f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt', pickle_protocol=4)
 
-    print(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt\n')
-    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{graph_params.settings["model"]["negative_sampling"]}.d{hidden_channels}.emb.pt\n')
+    print(f'\nEmbeddings saved to {model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt\n')
+    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt\n')
 
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     logging.info(f'\nMinimum loss after {epochs} epochs : {min_loss:.4f}\n')
