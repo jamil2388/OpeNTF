@@ -20,7 +20,7 @@ np.random.seed(0)
 
 settings = {
     'model':{
-            'negative_sampling' : 1.0,
+            'negative_sampling' : 2.0,
             'hidden_channels' : 16,
             'epochs' : 100,
             'gnn':{},

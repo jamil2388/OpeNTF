@@ -58,6 +58,16 @@ def load_data(filepath):
 
     print(f'Loading data from filepath : {filepath}')
     logging.info(f'Loading data from filepath : {filepath}\n')
+
+    # apply random initialization of features
+    if(type(data) == HeteroData):
+        for node_type in data.node_types:
+            if(data[node_type].x.sum() == 0):
+                print(f'Randomly assigning features to node type : {node_type}')
+                data[node_type].x = torch.rand(data[node_type].x.shape)
+    else:
+        data.x = torch.rand(data.x.shape)
+
     # print(data)
     return data
 
@@ -178,7 +188,7 @@ def define_splits(data):
         num_test=0.1,
         disjoint_train_ratio=0.3,
         neg_sampling_ratio=graph_params.settings['model']['negative_sampling'],
-        add_negative_train_samples=False,
+        add_negative_train_samples=True,
         edge_types= edge_types,
         rev_edge_types=rev_edge_types,
     )
