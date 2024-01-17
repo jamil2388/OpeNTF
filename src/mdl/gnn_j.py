@@ -324,14 +324,16 @@ def learn(data):
             print(f'epoch : {epoch}, loss : {loss:.4f}')
             logging.info(f'Epoch : {epoch}, Loss : {loss:.4f}')
             # auc = eval(val_data, 'validation')
-    torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.model.pt', pickle_protocol=4)
-    if (type(data) == HeteroData):
-        torch.save(model.x_dict, f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt', pickle_protocol=4)
-    else:
-        torch.save(model.x, f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt', pickle_protocol=4)
+    # torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.model.pt', pickle_protocol=4)
 
-    print(f'\nEmbeddings saved to {model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt\n')
-    logging.info(f'\nEmbeddings saved to {model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.emb.pt\n')
+    embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.ns{int(graph_params.settings["model"]["negative_sampling"])}.b{graph_params.settings["model"]["b"]}.d{hidden_channels}.emb.pt'
+    if (type(data) == HeteroData):
+        torch.save(model.x_dict, embedding_output, pickle_protocol=4)
+    else:
+        torch.save(model.x, embedding_output, pickle_protocol=4)
+
+    print(f'\nEmbeddings saved to {embedding_output}\n')
+    logging.info(f'\nEmbeddings saved to {embedding_output}\n')
 
     print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
     logging.info(f'\nMinimum loss after {epochs} epochs : {min_loss:.4f}\n')
@@ -520,7 +522,7 @@ if __name__ == '__main__':
                     print(f'\nargs : {args}')
 
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
-                    model_output = f'../../data/preprocessed/{domain}/{model_name}/{graph_type}.undir.{agg}'
+                    model_output = f'../../data/preprocessed/{domain}/emb'
                     # model_output = f'../../data/preprocessed/{domain}/{model_name}'
                     if not os.path.isdir(model_output): os.makedirs(model_output)
 

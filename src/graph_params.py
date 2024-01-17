@@ -23,6 +23,7 @@ settings = {
             'negative_sampling' : 2.0,
             'hidden_channels' : 16,
             'epochs' : 100,
+            'b' : 0, # 0 batching = taking whole data at once
             'gnn':{},
             'gcn':{},
             'gat':{
