@@ -284,13 +284,15 @@ def learn(data):
 
     # prof.start()
 
+    data.to(device)
+
     for epoch in range(1, epochs + 1):
+        torch.cuda.empty_cache()
         # if(epoch > 1 + 1 + 3):
         #     break
         # prof.step()
 
         optimizer.zero_grad()
-        data.to(device)
         pred = model(data, is_directed)
 
         if (type(data) == HeteroData):
