@@ -328,7 +328,7 @@ def learn(data):
             # auc = eval(val_data, 'validation')
     # torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.model.pt', pickle_protocol=4)
 
-    embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.ns{int(graph_params.settings["model"]["negative_sampling"])}.b{graph_params.settings["model"]["b"]}.d{hidden_channels}.emb.pt'
+    embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(graph_params.settings["model"]["negative_sampling"])}.b{graph_params.settings["model"]["b"]}.d{hidden_channels}.emb.pt'
     if (type(data) == HeteroData):
         torch.save(model.x_dict, embedding_output, pickle_protocol=4)
     else:
