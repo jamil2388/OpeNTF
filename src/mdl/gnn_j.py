@@ -318,7 +318,7 @@ def learn(data):
         loss.backward()
         optimizer.step()
 
-        print(f'epoch : {epoch}, loss : {loss:.4f}, time elapsed : {(time.time() - start) / 60:.2f} min')
+        # print(f'epoch : {epoch}, loss : {loss:.4f}, time elapsed : {(time.time() - start) / 60:.2f} min')
 
         if(loss < min_loss):
             min_loss = loss
