@@ -454,9 +454,10 @@ def addargs(parser):
     parser.add_argument('-gnn_models', nargs = '+', help = 'the gnn models to use for embedding generation')
     parser.add_argument('-graph_types', nargs = '+', help = 'the graph types to use')
     parser.add_argument('-agg', nargs = '+', help = 'the aggregation types to use')
+    parser.add_argument('-epochs', type = int, help = 'number of epochs for gnn training')
     parser.add_argument('-dim', type = int, help = 'the embedding dimension to use')
     parser.add_argument('-heads', type = int, help = 'the number of computational heads to use for gat models')
-    parser.add_argument('--use_cpu', type = int, help = '1 if you want gat to use cpu')
+    parser.add_argument('--use_cpu', type = int, required=False, help = '1 if you want gat to use cpu')
 
     args = parser.parse_args()
     return args
@@ -465,6 +466,7 @@ def set_params(args):
 
     graph_params.settings['model']['hidden_channels'] = args.dim
     graph_params.settings['model']['gat']['heads'] = args.heads
+    graph_params.settings['model']['epochs'] = args.epochs
 
 # sample command including all the args
 # cd OpeNTF_Jamil/src/mdl
