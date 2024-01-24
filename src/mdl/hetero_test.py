@@ -36,6 +36,15 @@ Class definitions
 '''
 
 
+
+# draw any graph
+def draw_graph(G):
+
+    G = torch_geometric.utils.to_networkx(G.to_homogeneous())
+    nx.draw(G, node_color = "red", node_size = 1000, with_labels = True)
+    plt.margins(0.5)
+    plt.show()
+
 # load previously written graph files
 def load_data(filepath):
 
@@ -50,19 +59,125 @@ def load_data(filepath):
     print(f'Loading data from filepath : {filepath}')
     logging.info(f'Loading data from filepath : {filepath}\n')
 
-    # apply random initialization of features
-    if(type(data) == HeteroData):
-        for node_type in data.node_types:
-            if(data[node_type].x.sum() == 0):
-                print(f'Randomly assigning features to node type : {node_type}')
-                data[node_type].x = torch.rand(data[node_type].x.shape)
-    else:
-        data.x = torch.rand(data.x.shape)
+    # # apply random initialization of features
+    # if(type(data) == HeteroData):
+    #     for node_type in data.node_types:
+    #         if(data[node_type].x.sum() == 0):
+    #             print(f'Randomly assigning features to node type : {node_type}')
+    #             data[node_type].x = torch.rand(data[node_type].x.shape)
+    # else:
+    #     data.x = torch.rand(data.x.shape)
 
     # print(data)
     return data
 
+def create_custom_homogeneous_data():
+    data = Data()
 
+    num_nodes = 8
+
+    # create
+    data.node_id = torch.arange(start=1, end=num_nodes + 1, step=1)
+    print(f'data.num_nodes = {data.num_nodes}')
+
+    # define edges u to m
+    edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
+                                   [2, 3], [2, 5], [2, 6], \
+                                   [3, 3], [3, 4], \
+                                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype=torch.long)
+    # optional edge_weight
+    edge_weight = torch.zeros((edge_index.shape[0],))
+    edge_weight[3] = 1
+
+    data.x = torch.tensor([[0]] * data.num_nodes, dtype = torch.float)
+    data.edge_index = edge_index.t().contiguous()
+    data.edge_weight = edge_weight
+    print(f'data.num_edges = {data.num_edges}')
+    print(f'data.edge_index = {data.edge_index}')
+
+    # make the graph undirected, generate reverse edges
+    # data = T.ToUndirected()(data)
+
+    # review the created data
+    print(f'data = {data}')
+
+    data.validate(raise_on_error = True)
+    return data
+
+# create a custom heterogeneous data here
+def create_custom_heterogeneous_data():
+
+    data = HeteroData()
+
+    num_user = 4
+    num_movie = 7
+
+    # create
+    data["user"].node_id = torch.arange(start = 0, end = num_user, step = 1)
+    data["movie"].node_id = torch.arange(start = 0, end = num_movie, step = 1)
+
+    for node_type in data.node_types:
+        data[node_type].x = torch.tensor([[0]] * data[node_type].num_nodes, dtype = torch.float)
+
+    print(f'data["user"].num_nodes = {data["user"].num_nodes}')
+    print(f'data["movie"].num_nodes = {data["movie"].num_nodes}')
+    print(f'data["movie"].node_id = {data["user"].node_id}')
+    print(f'data["movie"].node_id = {data["movie"].node_id}')
+
+    # define edges
+    # urm = user rates movie
+    # urrm = user rev_rates movie
+    # urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
+    #                   [2, 3], [2, 5], [2, 6], \
+    #                   [3, 3], [3, 4],  \
+    #                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
+    urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
+                      [2, 3], [2, 5], [2, 6], \
+                      [3, 3], [3, 4],  \
+                      [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
+    uhm_edge_index = torch.tensor([[1, 6], [1, 3], [1, 5], \
+                      [2, 3], [2, 5], [2, 6], [2, 1],\
+                      [3, 3], [3, 4],  \
+                      [4, 1], [4, 3], [4, 5], [4, 7]], dtype = torch.long)
+    urm_edge_index -= 1
+    uhm_edge_index -= 1
+
+    # optional weight matrix
+    urm_edge_attr = torch.ones((urm_edge_index.shape[0], 1))
+    uhm_edge_attr = torch.ones((uhm_edge_index.shape[0], 1))
+
+    data["user", "rates", "movie"].edge_index = urm_edge_index.t().contiguous()
+    data["user", "hates", "movie"].edge_index = uhm_edge_index.t().contiguous()
+    data["user", "rates", "movie"].edge_attr = urm_edge_attr
+    data["user", "hates", "movie"].edge_attr = uhm_edge_attr
+
+    print(f'data["user", "rates", "movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
+    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
+    print(f'data["user", "rates", "movie"].urm_edge_attr = {data["user", "rates", "movie"].edge_attr}')
+
+    # make the graph undirected
+    data = T.ToUndirected()(data)
+
+    # review the created data
+    print(f'data = {data}')
+
+    data.validate(raise_on_error = True)
+    return data
+
+def check_split(split_data, main_data, edge_type, index_type):
+    d = {}
+    for id1, (i, j) in enumerate(split_data[edge_type].edge_index.t() if index_type == 'edge_index' else split_data[edge_type].edge_label_index.t()):
+        if(index_type == 'edge_label_index' and split_data[edge_type].edge_label[id1] == 0):
+            continue
+        print(f'{id1}, {i}, {j}')
+        for id2, (k, l) in enumerate(main_data[edge_type].edge_index.t()):
+            if (i == k and j == l):
+                d[i, j] = 1
+            if (id2 == main_data[edge_type].edge_index.shape[1] - 1):
+                if (d.get((i, j)) is None):
+                    print(f'{i}, {j} from {index_type} not found in main data')
+                    break
+    print(f'd item count : {len(d.keys())}')
 
 # define the train, valid, test splits
 def define_splits(data):
@@ -87,12 +202,22 @@ def define_splits(data):
         num_test=0.1,
         disjoint_train_ratio=0.3,
         neg_sampling_ratio=graph_params.settings['model']['negative_sampling'],
-        add_negative_train_samples=True,
+        add_negative_train_samples=False,
         edge_types= edge_types,
         rev_edge_types=rev_edge_types,
     )
 
     train_data, val_data, test_data = transform(data)
+
+    train_data.validate(raise_on_error = True)
+    val_data.validate(raise_on_error = True)
+    test_data.validate(raise_on_error = True)
+
+    # data check
+    for edge_type in data.edge_types[:(len(data.edge_types) // 2)]:
+        for split_data in [train_data, val_data, test_data]:
+            for index_type in ['edge_index', 'edge_label_index']:
+                check_split(split_data, data, edge_type, index_type)
 
     return train_data, val_data, test_data
 
@@ -108,17 +233,16 @@ def create_mini_batch_loader(data):
         edge_label_index = train_data.edge_label_index
         edge_label = train_data.edge_label
         edge_label_index_tuple = edge_label_index
-    print(f'edge_label stuffs : {edge_label_index}, {edge_label}')
 
     mini_batch_loader = LinkNeighborLoader(
         data=data,
-        num_neighbors=[20, 10],
-        neg_sampling_ratio=0.0,
+        num_neighbors=[2],
+        neg_sampling_ratio=1.0,
         edge_label_index = edge_label_index_tuple,
         # edge_label_index = None,
         edge_label = edge_label,
         # edge_label = None,
-        batch_size=32,
+        batch_size=2,
         # shuffle=True,
     )
 
@@ -133,9 +257,9 @@ def create_mini_batch_loader(data):
 
     # Inspect a sample:
     # sampled_data = next(iter(train_loader))
-    for i, data in enumerate(mini_batch_loader):
+    for i, mbatch in enumerate(mini_batch_loader):
         print(f'sample data for iteration : {i}')
-        print(data)
+        print(mbatch)
         print(f'---------------------------------------\n')
     return mini_batch_loader
 
@@ -160,92 +284,6 @@ def create(data, model_name):
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     return model,optimizer
-
-# learn for unbatched data
-def learn(data):
-    start = time.time()
-    is_directed = data.is_directed()
-    min_loss = 100000000000
-    epochs = graph_params.settings['model']['epochs']
-    emb = {}
-
-    # # adding profiler for experimental steps
-    # ts = datetime.datetime.now()
-    # profiler_log_dir = '../../data/preprocessed/logs'
-    # if not os.path.isdir(profiler_log_dir): os.makedirs(profiler_log_dir)
-
-    # prof = profile(
-    #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-    #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
-    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(f'{profiler_log_dir}/gnn.{ts.day}.{ts.month}.{ts.year}_{ts.hour}.{ts.minute}.{ts.second}'),
-    #     record_shapes=True,
-    #     with_stack=True)
-
-    # prof.start()
-
-    data.to(device)
-
-    for epoch in range(1, epochs + 1):
-        torch.cuda.empty_cache()
-        # if(epoch > 1 + 1 + 3):
-        #     break
-        # prof.step()
-
-        optimizer.zero_grad()
-        pred = model(data, is_directed)
-
-        if (type(data) == HeteroData):
-            node_types = data.node_types
-            edge_types = data.edge_types if is_directed else data.edge_types[
-                                                                     :(len(data.edge_types)) // 2]
-            # we have ground_truths per edge_label_index
-            ground_truth = torch.empty(0).to(device)
-            for edge_type in edge_types:
-                ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
-            ground_truth = ground_truth.squeeze(0)
-
-            for node_type in node_types:
-                if(epoch == epochs):
-                    emb[node_type] = model.x_dict[node_type]
-            # ground_truth = sampled_data['user','rates','movie'].edge_label
-        else:
-            if (epoch == epochs):
-                emb['node'] = model.x
-            ground_truth = data.edge_label
-
-        loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
-        loss.backward()
-        optimizer.step()
-
-        # print(f'epoch : {epoch}, loss : {loss:.4f}, time elapsed : {(time.time() - start) / 60:.2f} min')
-
-        if(loss < min_loss):
-            min_loss = loss
-        if(epoch % 10 == 0):
-            print(f'epoch : {epoch}, loss : {loss:.4f}')
-            logging.info(f'Epoch : {epoch}, Loss : {loss:.4f}')
-            # auc = eval(val_data, 'validation')
-    # torch.save(model.state_dict(), f'{model_output}/{model_name}.ns{int(graph_params.settings["model"]["negative_sampling"])}.d{hidden_channels}.model.pt', pickle_protocol=4)
-
-    embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(graph_params.settings["model"]["negative_sampling"])}.b{graph_params.settings["model"]["b"]}.d{hidden_channels}.emb.pt'
-    if (type(data) == HeteroData):
-        torch.save(model.x_dict, embedding_output, pickle_protocol=4)
-    else:
-        torch.save(model.x, embedding_output, pickle_protocol=4)
-
-    print(f'\nEmbeddings saved to {embedding_output}\n')
-    logging.info(f'\nEmbeddings saved to {embedding_output}\n')
-
-    print(f'\nmin_loss after {epochs} epochs : {min_loss:.4f}\n')
-    logging.info(f'\nMinimum loss after {epochs} epochs : {min_loss:.4f}\n')
-
-
-    end = time.time()
-    total_time = end - start
-    print(f'total time taken : {total_time:.2f} seconds || {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
-    logging.info(f'Total time : {total_time / 60:.2f} minutes || {total_time / (60 * 60)} hours\n')
-
-    # prof.stop()
 
 # learning with batching
 def learn_batch(train_loader, is_directed):
@@ -289,41 +327,6 @@ def learn_batch(train_loader, is_directed):
         if epoch % 10 == 0 :
             # auc = eval(val_loader)
             print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
-
-
-@torch.no_grad()
-def eval(data, mode = 'validation'):
-    model.eval()
-
-    data.to(device)
-    pred = model(data, is_directed)
-    # The ground_truth and the pred shapes should be 1-dimensional
-    # we squeeze them after generation
-    if (type(data) == HeteroData):
-        edge_types = data.edge_types if is_directed else data.edge_types[
-                                                         :(len(data.edge_types)) // 2]
-        # we have ground_truths per edge_label_index
-        ground_truth = torch.empty(0).to(device)
-        for edge_type in edge_types:
-            ground_truth = torch.cat((ground_truth, data[edge_type].edge_label.unsqueeze(0)), dim=1)
-        ground_truth = ground_truth.squeeze(0)
-    else:
-        ground_truth = data.edge_label
-
-    loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
-
-    print(f'{mode} loss : {loss:.4f}')
-    logging.info(f'{mode} loss : {loss:.4f}')
-
-    print(f'pred = {pred}')
-    print(f'ground_truth = {ground_truth}')
-    print(f'pred = {pred.sigmoid()}')
-
-    if(mode == 'validation'):
-        auc = roc_auc_score(ground_truth, torch.sigmoid(pred))
-        print()
-        print(f"AUC : {auc:.4f}")
-        return auc
 
 # loader can be test or can be validation
 def eval_batch(loader, is_directed):
@@ -448,9 +451,9 @@ if __name__ == '__main__':
                     # validate_splits(train_data, val_data, test_data)
 
                     ## Sampling
-                    # train_loader = create_mini_batch_loader(train_data)
-                    # val_loader = create_mini_batch_loader(val_data)
-                    # test_loader = create_mini_batch_loader(test_data)
+                    train_loader = create_mini_batch_loader(train_data)
+                    val_loader = create_mini_batch_loader(val_data)
+                    test_loader = create_mini_batch_loader(test_data)
 
                     # set the device
                     if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
@@ -465,7 +468,7 @@ if __name__ == '__main__':
                     # the train_data is needed to collect info about the metadata
                     model,optimizer = create(train_data, model_name)
 
-                    learn(train_data)
+                    learn_batch(train_data)
                     # the sampled_data from mini_batch_loader does not properly show the
                     # is_directed status
                     # learn_batch(train_loader, is_directed)
