@@ -169,7 +169,7 @@ def check_split(split_data, main_data, edge_type, index_type):
     for id1, (i, j) in enumerate(split_data[edge_type].edge_index.t() if index_type == 'edge_index' else split_data[edge_type].edge_label_index.t()):
         if(index_type == 'edge_label_index' and split_data[edge_type].edge_label[id1] == 0):
             continue
-        print(f'{id1}, {i}, {j}')
+        # print(f'{id1}, {i}, {j}')
         for id2, (k, l) in enumerate(main_data[edge_type].edge_index.t()):
             if (i == k and j == l):
                 d[i, j] = 1
@@ -221,28 +221,29 @@ def define_splits(data):
 
     return train_data, val_data, test_data
 
-def create_mini_batch_loader(data):
+# create a mbatch for a given split_data (train / val / test)
+def create_mini_batch_loader(split_data):
     # Define seed edges:
     # we pick only a single edge_type to feed edge_label_index (need to verify this approach)
-    if (type(data) == HeteroData):
-        edge_types = train_data.edge_types
-        edge_label_index = train_data[edge_types[0]].edge_label_index
-        edge_label = train_data[edge_types[0]].edge_label
+    if (type(split_data) == HeteroData):
+        edge_types = split_data.edge_types
+        edge_label_index = split_data[edge_types[0]].edge_label_index
+        edge_label = split_data[edge_types[0]].edge_label
         edge_label_index_tuple = (edge_types[0], edge_label_index)
     else:
-        edge_label_index = train_data.edge_label_index
-        edge_label = train_data.edge_label
+        edge_label_index = split_data.edge_label_index
+        edge_label = split_data.edge_label
         edge_label_index_tuple = edge_label_index
 
     mini_batch_loader = LinkNeighborLoader(
-        data=data,
+        data=split_data,
         num_neighbors=[2],
         neg_sampling_ratio=1.0,
         edge_label_index = edge_label_index_tuple,
         # edge_label_index = None,
         edge_label = edge_label,
         # edge_label = None,
-        batch_size=2,
+        batch_size=b,
         # shuffle=True,
     )
 
@@ -267,38 +268,40 @@ def create(data, model_name):
 
     if (model_name == 'gcn'):
         # gcn
-        model = GCNModel(hidden_channels=hidden_channels, data=data)
+        model = GCNModel(hidden_channels=hidden_channels, data=data, b=b)
     elif (model_name == 'gs'):
         # gs
-        model = GSModel(hidden_channels=hidden_channels, data = data)
+        model = GSModel(hidden_channels=hidden_channels, data = data, b=b)
     elif (model_name == 'gat'):
         # gat
-        model = GATModel(hidden_channels=hidden_channels, data = data)
+        model = GATModel(hidden_channels=hidden_channels, data = data, b=b)
     elif (model_name == 'gin'):
         # gin
-        model = GINModel(hidden_channels=hidden_channels, data=data)
+        model = GINModel(hidden_channels=hidden_channels, data=data, b=b)
 
     print(model)
     print(f'\nDevice = {device}')
 
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     return model,optimizer
 
 # learning with batching
-def learn_batch(train_loader, is_directed):
-
-    epochs = 1000
+def learn_batch(loader, is_directed):
+    start = time.time()
+    min_loss = 100000000000
+    epochs = graph_params.settings['model']['epochs']
+    emb = {}
 
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
         # print(f'epoch = {epoch}')
-        for sampled_data in train_loader:
+        for sampled_data in loader:
             optimizer.zero_grad()
 
             sampled_data.to(device)
             pred = model(sampled_data, is_directed)
-
+            continue
             # The ground_truth and the pred shapes should be 1-dimensional
             # we squeeze them after generation
             if(type(sampled_data) == HeteroData):
@@ -390,6 +393,8 @@ if __name__ == '__main__':
     set_params(args)
     hidden_channels = graph_params.settings['model']['hidden_channels']
     heads = graph_params.settings['model']['gat']['heads']
+    b = graph_params.settings['model']['b']
+    lr = graph_params.settings['model']['lr']
 
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
@@ -450,10 +455,11 @@ if __name__ == '__main__':
                     train_data, val_data, test_data = define_splits(data)
                     # validate_splits(train_data, val_data, test_data)
 
-                    ## Sampling
-                    train_loader = create_mini_batch_loader(train_data)
-                    val_loader = create_mini_batch_loader(val_data)
-                    test_loader = create_mini_batch_loader(test_data)
+                    ## Sampling for batching > 0
+                    if b:
+                        train_loader = create_mini_batch_loader(train_data)
+                        val_loader = create_mini_batch_loader(val_data)
+                        test_loader = create_mini_batch_loader(test_data)
 
                     # set the device
                     if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
@@ -468,7 +474,11 @@ if __name__ == '__main__':
                     # the train_data is needed to collect info about the metadata
                     model,optimizer = create(train_data, model_name)
 
-                    learn_batch(train_data)
+                    if b:
+                        learn_batch(train_loader, is_directed)
+                    else:
+                        pass
+                        # learn(train_data)
                     # the sampled_data from mini_batch_loader does not properly show the
                     # is_directed status
                     # learn_batch(train_loader, is_directed)

@@ -22,8 +22,9 @@ settings = {
     'model':{
             'negative_sampling' : 2.0,
             'hidden_channels' : 16,
-            'epochs' : 100,
-            'b' : 0, # 0 batching = taking whole data at once
+            'epochs' : 500,
+            'b' : 2, # 0 batching = taking whole data at once
+            'lr' : 0.001,
             'gnn':{},
             'gcn':{},
             'gat':{
