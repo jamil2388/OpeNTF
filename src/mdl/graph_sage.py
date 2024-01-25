@@ -38,7 +38,7 @@ class Model(torch.nn.Module):
         self.b = b
         if(type(data) == HeteroData):
             self.node_lin = []
-            if self.b : self.node_emb = []
+            self.node_emb = []
             # for each node_type
             node_types = data.node_types
             # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
@@ -46,17 +46,17 @@ class Model(torch.nn.Module):
             for i, node_type in enumerate(node_types):
                 if (data.is_cuda):
                     self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels).cuda())
-                    if self.b : self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
+                    self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
                 else:
                     self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
-                    if self.b : self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
+                    self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
         else:
             if (data.is_cuda):
                 self.node_lin = torch.nn.Linear(data.num_features, hidden_channels).cuda()
-                if self.b : self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
+                self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
             else:
                 self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
-                if self.b : self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
+                self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
         # Instantiate homogeneous gat:
         self.gs = GS(hidden_channels)
@@ -68,22 +68,19 @@ class Model(torch.nn.Module):
         # instantiate the predictor class
         self.classifier = Classifier()
 
-    def forward(self, data, is_directed) -> Tensor:
+    def forward(self, data, node_dict, is_directed) -> Tensor:
         if(type(data) == HeteroData):
-            x_dict = {}
-            self.x_dict = x_dict
+            self.x_dict = {}
             edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
-                x_dict[node_type] = self.node_lin[i](data[node_type].x)
-                # this line is for batching mode
-                if self.b : x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+                self.x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](node_dict[node_type])
             # `x_dict` holds embedding matrices of all node types
             # `edge_index_dict` holds all edge indices of all edge types
-            self.x_dict = self.gs(x_dict, data.edge_index_dict)
+            self.x_dict = self.gs(self.x_dict, data.edge_index_dict)
         else:
             # for batching mode and homogeneous graphs, this line should be tested by appending node_emb part
             # e.g : if self.b : x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
-            x = self.node_lin(data.x)
+            x = self.node_lin(data.x) + self.node_emb(node_dict)
             x = self.gs(x, data.edge_index)
             self.x = x
 

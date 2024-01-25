@@ -68,6 +68,8 @@ def load_data(filepath):
     # else:
     #     data.x = torch.rand(data.x.shape)
 
+    # add node_ids to the data for global node storage
+
     # print(data)
     return data
 
@@ -297,8 +299,6 @@ def learn_batch(loader, is_directed):
     epochs = graph_params.settings['model']['epochs']
     emb = {}
 
-
-
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
         # print(f'epoch = {epoch}')
@@ -306,7 +306,7 @@ def learn_batch(loader, is_directed):
             optimizer.zero_grad()
 
             sampled_data.to(device)
-            pred = model(sampled_data, is_directed)
+            pred = model(sampled_data, node_dict, is_directed)
             continue
             # The ground_truth and the pred shapes should be 1-dimensional
             # we squeeze them after generation
@@ -451,6 +451,13 @@ if __name__ == '__main__':
                     # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
                     # filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
                     data = load_data(filepath)
+                    # global node storage
+                    if (type(data) == HeteroData):
+                        node_dict = {}
+                        for node_type in data.node_types:
+                            node_dict[node_type] = torch.arange(data[node_type].x.shape[0])
+                    else:
+                        node_dict = torch.arange(data.x.shape[0])
                     is_directed = data.is_directed()
 
                     # # draw the graph
