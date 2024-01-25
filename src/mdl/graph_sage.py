@@ -12,14 +12,16 @@ class GS(torch.nn.Module):
         self.conv2 = SAGEConv(hidden_channels, hidden_channels)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
+        print(f'\n1.......\nx = {x}\n')
         x = F.relu(self.conv1(x, edge_index))
+        print(f'\n2.......\nx = {x}\n')
         x = self.conv2(x, edge_index)
+        print(f'\n3.......\nx = {x}\n')
         return x
 
-# Our final classifier applies the dot-product between source and destination
-# node embeddings to derive edge-level predictions:
 class Classifier(torch.nn.Module):
     def forward(self, source_node_emb, target_node_emb, edge_label_index) -> Tensor:
+
         # Convert node embeddings to edge-level representations:
         edge_feat_source = source_node_emb[edge_label_index[0]]
         edge_feat_target = target_node_emb[edge_label_index[1]]
@@ -31,31 +33,32 @@ class Classifier(torch.nn.Module):
 class Model(torch.nn.Module):
     # the data here is the global graph data that we loaded
     # need to verify whether in inductive training we pass the entire data info here
-    def __init__(self, hidden_channels, data):
+    def __init__(self, hidden_channels, data, b):
         super().__init__()
+        self.b = b
         if(type(data) == HeteroData):
             self.node_lin = []
-            # self.node_emb = []
+            if self.b : self.node_emb = []
             # for each node_type
             node_types = data.node_types
             # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
             # these two are generated such that both of them has the same shape and they can be added together
             for i, node_type in enumerate(node_types):
-                if(data.is_cuda):
+                if (data.is_cuda):
                     self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels).cuda())
-                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
+                    if self.b : self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
                 else:
                     self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
-                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
+                    if self.b : self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
         else:
             if (data.is_cuda):
                 self.node_lin = torch.nn.Linear(data.num_features, hidden_channels).cuda()
-                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
+                if self.b : self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
             else:
                 self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
-                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
+                if self.b : self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
-        # Instantiate homogeneous gs:
+        # Instantiate homogeneous gat:
         self.gs = GS(hidden_channels)
 
         if (type(data) == HeteroData):
@@ -66,7 +69,6 @@ class Model(torch.nn.Module):
         self.classifier = Classifier()
 
     def forward(self, data, is_directed) -> Tensor:
-
         if(type(data) == HeteroData):
             x_dict = {}
             self.x_dict = x_dict
@@ -74,19 +76,16 @@ class Model(torch.nn.Module):
             for i, node_type in enumerate(data.node_types):
                 x_dict[node_type] = self.node_lin[i](data[node_type].x)
                 # this line is for batching mode
-                # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
-            # message passing
-            x_dict = self.gs(x_dict, data.edge_index_dict)
-
+                if self.b : x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+            # `x_dict` holds embedding matrices of all node types
+            # `edge_index_dict` holds all edge indices of all edge types
+            self.x_dict = self.gs(x_dict, data.edge_index_dict)
         else:
+            # for batching mode and homogeneous graphs, this line should be tested by appending node_emb part
+            # e.g : if self.b : x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
             x = self.node_lin(data.x)
             x = self.gs(x, data.edge_index)
             self.x = x
-            # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
-
-        # `x_dict` holds embedding matrices of all node types
-        # `edge_index_dict` holds all edge indices of all edge types
-
 
         # create an empty tensor and concatenate the preds afterwards
         preds = torch.empty(0).to(device = 'cuda' if data.is_cuda else 'cpu')
@@ -96,13 +95,23 @@ class Model(torch.nn.Module):
             # e.g: for edge_type 1, 2, 3
             # source_node_emb contains the embeddings of each node of the defined node_type
             for edge_type in edge_types:
-                source_node_emb = x_dict[edge_type[0]]
-                target_node_emb = x_dict[edge_type[2]]
-                edge_label_index = data[edge_type].edge_label_index
-                pred = self.classifier(source_node_emb, target_node_emb, edge_label_index)
+                source_node_emb = self.x_dict[edge_type[0]]
+                target_node_emb = self.x_dict[edge_type[2]]
+                edge_label_index_global = data[edge_type].edge_label_index
+                if self.b:
+                    # convert the edge_label_indices local n_id to global n_ids
+                    edge_label_index_global[0] = data[edge_type[0]].n_id[data[edge_type].edge_label_index[0]]
+                    edge_label_index_global[1] = data[edge_type[2]].n_id[data[edge_type].edge_label_index[1]]
+                pred = self.classifier(source_node_emb, target_node_emb, edge_label_index_global)
                 preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
         else:
-            pred = self.classifier(x, x, data.edge_label_index)
+            edge_label_index_global = data.edge_label_index
+            # the homogeneous batching should be tested later
+            if self.b :
+                # convert the edge_label_indices local n_id to global n_ids
+                edge_label_index_global[0] = data.n_id[data.edge_label_index[0]]
+                edge_label_index_global[1] = data.n_id[data.edge_label_index[1]]
+            pred = self.classifier(x, x, edge_label_index_global)
             # pred = self.classifier(x_dict['node'], x_dict['node'], data.edge_label_index)
             preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
         return preds.squeeze(dim=0)

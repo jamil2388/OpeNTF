@@ -16,7 +16,7 @@ class GAT(torch.nn.Module):
       x = F.relu(self.conv1(x, edge_index))
       print(f'\n2.......\nx = {x}\n')
       x = self.conv2(x, edge_index)
-      print(f'\n2.......\nx = {x}\n')
+      print(f'\n3.......\nx = {x}\n')
       return x
 
 # Our final classifier applies the dot-product between source and destination

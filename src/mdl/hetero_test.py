@@ -219,6 +219,10 @@ def define_splits(data):
             for index_type in ['edge_index', 'edge_label_index']:
                 check_split(split_data, data, edge_type, index_type)
 
+    train_data.validate(raise_on_error = True)
+    val_data.validate(raise_on_error = True)
+    test_data.validate(raise_on_error = True)
+
     return train_data, val_data, test_data
 
 # create a mbatch for a given split_data (train / val / test)
@@ -258,10 +262,10 @@ def create_mini_batch_loader(split_data):
 
     # Inspect a sample:
     # sampled_data = next(iter(train_loader))
-    for i, mbatch in enumerate(mini_batch_loader):
-        print(f'sample data for iteration : {i}')
-        print(mbatch)
-        print(f'---------------------------------------\n')
+    # for i, mbatch in enumerate(mini_batch_loader):
+    #     print(f'sample data for iteration : {i}')
+    #     print(mbatch)
+    #     print(f'---------------------------------------\n')
     return mini_batch_loader
 
 def create(data, model_name):
@@ -292,6 +296,8 @@ def learn_batch(loader, is_directed):
     min_loss = 100000000000
     epochs = graph_params.settings['model']['epochs']
     emb = {}
+
+
 
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0

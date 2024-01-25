@@ -19,13 +19,13 @@ class GS(torch.nn.Module):
 # Our final classifier applies the dot-product between source and destination
 # node embeddings to derive edge-level predictions:
 class Classifier(torch.nn.Module):
-    def forward(self, x_user: Tensor, x_movie: Tensor, edge_label_index: Tensor) -> Tensor:
+    def forward(self, source_node_emb, target_node_emb, edge_label_index) -> Tensor:
         # Convert node embeddings to edge-level representations:
-        edge_feat_user = x_user[edge_label_index[0]]
-        edge_feat_movie = x_movie[edge_label_index[1]]
+        edge_feat_source = source_node_emb[edge_label_index[0]]
+        edge_feat_target = target_node_emb[edge_label_index[1]]
 
-        # Apply dot-product to get a prediction per supervision edge:
-        return (edge_feat_user * edge_feat_movie).sum(dim=-1)
+        # Apply dot-product to get a prediction per supervision edge in the edge_label_index
+        return (edge_feat_source * edge_feat_target).sum(dim=-1)
 
 
 class Model(torch.nn.Module):
@@ -33,17 +33,27 @@ class Model(torch.nn.Module):
     # need to verify whether in inductive training we pass the entire data info here
     def __init__(self, hidden_channels, data):
         super().__init__()
-        # Since the dataset does not come with rich features, we also learn two
-        # embedding matrices for users and movies:
-        # self.movie_lin = torch.nn.Linear(20, hidden_channels)
-        # this edit is due to the fact that the input size of the linear layer transform is equal
-        # to the number of features in x
-        self.user_lin = torch.nn.Linear(data['user'].num_features, hidden_channels)
-        self.movie_lin = torch.nn.Linear(data['movie'].num_features, hidden_channels)
-
-        # the embeddings of the node_types
-        self.user_emb = torch.nn.Embedding(data["user"].num_nodes, hidden_channels)
-        self.movie_emb = torch.nn.Embedding(data["movie"].num_nodes, hidden_channels)
+        if(type(data) == HeteroData):
+            self.node_lin = []
+            # self.node_emb = []
+            # for each node_type
+            node_types = data.node_types
+            # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
+            # these two are generated such that both of them has the same shape and they can be added together
+            for i, node_type in enumerate(node_types):
+                if(data.is_cuda):
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels).cuda())
+                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
+                else:
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
+                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
+        else:
+            if (data.is_cuda):
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels).cuda()
+                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
+            else:
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
+                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
         # Instantiate homogeneous gs:
         self.gs = GS(hidden_channels)
@@ -52,29 +62,47 @@ class Model(torch.nn.Module):
             # Convert gs model into a heterogeneous variant:
             self.gs = to_hetero(self.gs, metadata=data.metadata())
 
+        # instantiate the predictor class
         self.classifier = Classifier()
 
     def forward(self, data, is_directed) -> Tensor:
 
-        x_dict = {
-            # previously, the lin layer was ignored because of not having any features, we can still ignore it now
-            "user": self.user_lin(data["user"].x) + self.user_emb(data["user"].node_id),
-            # the feature x conversion part with movie_lin should be revisited
-            "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
-        }
+        if(type(data) == HeteroData):
+            x_dict = {}
+            self.x_dict = x_dict
+            edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
+            for i, node_type in enumerate(data.node_types):
+                x_dict[node_type] = self.node_lin[i](data[node_type].x)
+                # this line is for batching mode
+                # x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
+            # message passing
+            x_dict = self.gs(x_dict, data.edge_index_dict)
 
-        # `x_dict` holds feature matrices of all node types
+        else:
+            x = self.node_lin(data.x)
+            x = self.gs(x, data.edge_index)
+            self.x = x
+            # x_dict['node'] = self.node_lin(data.x) + self.node_emb(data.n_id)
+
+        # `x_dict` holds embedding matrices of all node types
         # `edge_index_dict` holds all edge indices of all edge types
-        # pass the embedding of the nodes of all node types and also the edge_index_dict
-        # containing the info of all message passing edges
-        # this x_dict will now contain the updated embeddings after the message passed layers
-        x_dict = self.gs(x_dict, data.edge_index_dict)
 
 
-        pred = self.classifier(
-            x_dict['user'],
-            x_dict['movie'],
-            data["user", "rates", "movie"].edge_label_index,
-        )
+        # create an empty tensor and concatenate the preds afterwards
+        preds = torch.empty(0).to(device = 'cuda' if data.is_cuda else 'cpu')
 
-        return pred
+        if (type(data) == HeteroData):
+            # generate predictions per edge_label_index type
+            # e.g: for edge_type 1, 2, 3
+            # source_node_emb contains the embeddings of each node of the defined node_type
+            for edge_type in edge_types:
+                source_node_emb = x_dict[edge_type[0]]
+                target_node_emb = x_dict[edge_type[2]]
+                edge_label_index = data[edge_type].edge_label_index
+                pred = self.classifier(source_node_emb, target_node_emb, edge_label_index)
+                preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
+        else:
+            pred = self.classifier(x, x, data.edge_label_index)
+            # pred = self.classifier(x_dict['node'], x_dict['node'], data.edge_label_index)
+            preds = torch.cat((preds, pred.unsqueeze(0)), dim = 1)
+        return preds.squeeze(dim=0)
