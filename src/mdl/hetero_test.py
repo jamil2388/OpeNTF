@@ -35,8 +35,6 @@ import argparse
 Class definitions
 '''
 
-
-
 # draw any graph
 def draw_graph(G):
 
@@ -59,111 +57,7 @@ def load_data(filepath):
     print(f'Loading data from filepath : {filepath}')
     logging.info(f'Loading data from filepath : {filepath}\n')
 
-    # # apply random initialization of features
-    # if(type(data) == HeteroData):
-    #     for node_type in data.node_types:
-    #         if(data[node_type].x.sum() == 0):
-    #             print(f'Randomly assigning features to node type : {node_type}')
-    #             data[node_type].x = torch.rand(data[node_type].x.shape)
-    # else:
-    #     data.x = torch.rand(data.x.shape)
-
-    # add node_ids to the data for global node storage
-
     # print(data)
-    return data
-
-def create_custom_homogeneous_data():
-    data = Data()
-
-    num_nodes = 8
-
-    # create
-    data.node_id = torch.arange(start=1, end=num_nodes + 1, step=1)
-    print(f'data.num_nodes = {data.num_nodes}')
-
-    # define edges u to m
-    edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
-                                   [2, 3], [2, 5], [2, 6], \
-                                   [3, 3], [3, 4], \
-                                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype=torch.long)
-    # optional edge_weight
-    edge_weight = torch.zeros((edge_index.shape[0],))
-    edge_weight[3] = 1
-
-    data.x = torch.tensor([[0]] * data.num_nodes, dtype = torch.float)
-    data.edge_index = edge_index.t().contiguous()
-    data.edge_weight = edge_weight
-    print(f'data.num_edges = {data.num_edges}')
-    print(f'data.edge_index = {data.edge_index}')
-
-    # make the graph undirected, generate reverse edges
-    # data = T.ToUndirected()(data)
-
-    # review the created data
-    print(f'data = {data}')
-
-    data.validate(raise_on_error = True)
-    return data
-
-# create a custom heterogeneous data here
-def create_custom_heterogeneous_data():
-
-    data = HeteroData()
-
-    num_user = 4
-    num_movie = 7
-
-    # create
-    data["user"].node_id = torch.arange(start = 0, end = num_user, step = 1)
-    data["movie"].node_id = torch.arange(start = 0, end = num_movie, step = 1)
-
-    for node_type in data.node_types:
-        data[node_type].x = torch.tensor([[0]] * data[node_type].num_nodes, dtype = torch.float)
-
-    print(f'data["user"].num_nodes = {data["user"].num_nodes}')
-    print(f'data["movie"].num_nodes = {data["movie"].num_nodes}')
-    print(f'data["movie"].node_id = {data["user"].node_id}')
-    print(f'data["movie"].node_id = {data["movie"].node_id}')
-
-    # define edges
-    # urm = user rates movie
-    # urrm = user rev_rates movie
-    # urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
-    #                   [2, 3], [2, 5], [2, 6], \
-    #                   [3, 3], [3, 4],  \
-    #                   [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
-    urm_edge_index = torch.tensor([[1, 1], [1, 3], [1, 5], \
-                      [2, 3], [2, 5], [2, 6], \
-                      [3, 3], [3, 4],  \
-                      [4, 1], [4, 2], [4, 5], [4, 7]], dtype = torch.long)
-    uhm_edge_index = torch.tensor([[1, 6], [1, 3], [1, 5], \
-                      [2, 3], [2, 5], [2, 6], [2, 1],\
-                      [3, 3], [3, 4],  \
-                      [4, 1], [4, 3], [4, 5], [4, 7]], dtype = torch.long)
-    urm_edge_index -= 1
-    uhm_edge_index -= 1
-
-    # optional weight matrix
-    urm_edge_attr = torch.ones((urm_edge_index.shape[0], 1))
-    uhm_edge_attr = torch.ones((uhm_edge_index.shape[0], 1))
-
-    data["user", "rates", "movie"].edge_index = urm_edge_index.t().contiguous()
-    data["user", "hates", "movie"].edge_index = uhm_edge_index.t().contiguous()
-    data["user", "rates", "movie"].edge_attr = urm_edge_attr
-    data["user", "hates", "movie"].edge_attr = uhm_edge_attr
-
-    print(f'data["user", "rates", "movie"].num_edges = {data["user", "rates", "movie"].num_edges}')
-    print(f'data["user", "rates", "movie"].edge_index = {data["user", "rates", "movie"].edge_index}')
-    print(f'data["user", "rates", "movie"].urm_edge_attr = {data["user", "rates", "movie"].edge_attr}')
-
-    # make the graph undirected
-    data = T.ToUndirected()(data)
-
-    # review the created data
-    print(f'data = {data}')
-
-    data.validate(raise_on_error = True)
     return data
 
 def check_split(split_data, main_data, edge_type, index_type):
@@ -225,32 +119,23 @@ def define_splits(data):
     val_data.validate(raise_on_error = True)
     test_data.validate(raise_on_error = True)
 
-    return train_data, val_data, test_data
+    return train_data, val_data, test_data, edge_types, rev_edge_types
 
 # create a mbatch for a given split_data (train / val / test)
-def create_mini_batch_loader(split_data):
+def create_mini_batch_loader(split_data, seed_edge_type):
     # Define seed edges:
     # we pick only a single edge_type to feed edge_label_index (need to verify this approach)
-    if (type(split_data) == HeteroData):
-        edge_types = split_data.edge_types
-        edge_label_index = split_data[edge_types[0]].edge_label_index
-        edge_label = split_data[edge_types[0]].edge_label
-        edge_label_index_tuple = (edge_types[0], edge_label_index)
-    else:
-        edge_label_index = split_data.edge_label_index
-        edge_label = split_data.edge_label
-        edge_label_index_tuple = edge_label_index
 
     mini_batch_loader = LinkNeighborLoader(
         data=split_data,
         num_neighbors=[2],
         neg_sampling_ratio=1.0,
-        edge_label_index = edge_label_index_tuple,
+        edge_label_index = (seed_edge_type, split_data[seed_edge_type].edge_label_index),
         # edge_label_index = None,
-        edge_label = edge_label,
+        edge_label = split_data[seed_edge_type].edge_label,
         # edge_label = None,
         batch_size=b,
-        # shuffle=True,
+        shuffle=True,
     )
 
     # mini_batch_loader = HGTLoader(
@@ -264,10 +149,10 @@ def create_mini_batch_loader(split_data):
 
     # Inspect a sample:
     # sampled_data = next(iter(train_loader))
-    # for i, mbatch in enumerate(mini_batch_loader):
-    #     print(f'sample data for iteration : {i}')
-    #     print(mbatch)
-    #     print(f'---------------------------------------\n')
+    for i, mbatch in enumerate(mini_batch_loader):
+        print(f'sample data for iteration : {i}')
+        print(mbatch)
+        print(f'---------------------------------------\n')
     return mini_batch_loader
 
 def create(data, model_name):
@@ -302,40 +187,37 @@ def learn_batch(loader, is_directed):
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
         # print(f'epoch = {epoch}')
-        for sampled_data in loader:
-            optimizer.zero_grad()
 
-            sampled_data.to(device)
-            pred = model(sampled_data, node_dict, is_directed)
-            continue
-            # The ground_truth and the pred shapes should be 1-dimensional
-            # we squeeze them after generation
-            if(type(sampled_data) == HeteroData):
-                edge_types = sampled_data.edge_types if is_directed else sampled_data.edge_types[:(len(sampled_data.edge_types)) // 2]
-                # we have ground_truths per edge_label_index
-                ground_truth = torch.empty(0)
-                for edge_type in edge_types:
-                    ground_truth = torch.cat((ground_truth, sampled_data[edge_type].edge_label.unsqueeze(0)), dim = 1)
-                ground_truth = ground_truth.squeeze(0)
-                # ground_truth = sampled_data['user','rates','movie'].edge_label
-            else:
-                ground_truth = sampled_data.edge_label
-            loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+        # train for loaders of all edge_types, e.g : train_loader['skill','to','team'], train_loader['member','to','team']
+        for seed_edge_type in edge_types:
+            for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
+                optimizer.zero_grad()
 
-            loss.backward()
-            optimizer.step()
-            total_loss += float(loss) * pred.numel()
-            total_examples += pred.numel()
-            # print(f'loss = {loss}')
-            # print(f'epoch = {epoch}')
-            # print(f'loss = {loss}')
-            # print(f'total_examples = {total_examples}')
-            # print(f'total_loss = {total_loss}')
+                sampled_data.to(device)
+                pred = model(sampled_data, seed_edge_type, is_directed)
+                # The ground_truth and the pred shapes should be 1-dimensional
+                # we squeeze them after generation
+                if(type(sampled_data) == HeteroData):
+                    ground_truth = sampled_data[seed_edge_type].edge_label
+                else:
+                    ground_truth = sampled_data.edge_label
+                loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
 
-        # validation part here maybe ?
-        if epoch % 10 == 0 :
-            # auc = eval(val_loader)
-            print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
+                loss.backward()
+                optimizer.step()
+                total_loss += float(loss) * pred.numel()
+                total_examples += pred.numel()
+                # print(f'loss = {loss}')
+                # print(f'epoch = {epoch}')
+                # print(f'loss = {loss}')
+                # print(f'total_examples = {total_examples}')
+                # print(f'total_loss = {total_loss}')
+
+        # # validation part here maybe ?
+        # if epoch % 10 == 0 :
+        #     # auc = eval(val_loader)
+        #     print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
+        print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
 # loader can be test or can be validation
 def eval_batch(loader, is_directed):
@@ -451,13 +333,6 @@ if __name__ == '__main__':
                     # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
                     # filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
                     data = load_data(filepath)
-                    # global node storage
-                    if (type(data) == HeteroData):
-                        node_dict = {}
-                        for node_type in data.node_types:
-                            node_dict[node_type] = torch.arange(data[node_type].x.shape[0])
-                    else:
-                        node_dict = torch.arange(data.x.shape[0])
                     is_directed = data.is_directed()
 
                     # # draw the graph
@@ -465,14 +340,17 @@ if __name__ == '__main__':
 
                     # train_data, val_data, test_data = define_splits(homogeneous_data)
                     # train_data, val_data, test_data = define_splits(heterogeneous_data)
-                    train_data, val_data, test_data = define_splits(data)
+                    train_data, val_data, test_data, edge_types, rev_edge_types = define_splits(data)
                     # validate_splits(train_data, val_data, test_data)
 
                     ## Sampling for batching > 0
                     if b:
-                        train_loader = create_mini_batch_loader(train_data)
-                        val_loader = create_mini_batch_loader(val_data)
-                        test_loader = create_mini_batch_loader(test_data)
+                        train_loader, val_loader, test_loader = {}, {}, {}
+                        # create separate loaders for separate seed edge_types
+                        for edge_type in edge_types:
+                            train_loader[edge_type] = create_mini_batch_loader(train_data, edge_type)
+                            val_loader[edge_type] = create_mini_batch_loader(val_data, edge_type)
+                            test_loader[edge_type] = create_mini_batch_loader(test_data, edge_type)
 
                     # set the device
                     if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
