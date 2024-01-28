@@ -97,7 +97,7 @@ def define_splits(data):
         num_val=0.1,
         num_test=0.1,
         disjoint_train_ratio=0.3,
-        neg_sampling_ratio=graph_params.settings['model']['negative_sampling'],
+        neg_sampling_ratio=ns,
         add_negative_train_samples=False,
         edge_types= edge_types,
         rev_edge_types=rev_edge_types,
@@ -121,38 +121,25 @@ def define_splits(data):
 
     return train_data, val_data, test_data, edge_types, rev_edge_types
 
-# create a mbatch for a given split_data (train / val / test)
-def create_mini_batch_loader(split_data, seed_edge_type):
+# create a mbatch for a given split_data (mode = train / val / test)
+def create_mini_batch_loader(split_data, seed_edge_type, mode):
     # Define seed edges:
     # we pick only a single edge_type to feed edge_label_index (need to verify this approach)
 
+    # neg_sampling in val or test loader causes doubling the edge_label weight producing 2.0 instead of values 1.0 (need to test)
+    neg_sampling = ns if mode == 'train' else None
+    batch_size =  b if mode == 'train' else (3 * b)
+    shuffle = True if mode == 'train' else False
+
     mini_batch_loader = LinkNeighborLoader(
         data=split_data,
-        num_neighbors=[2],
-        neg_sampling_ratio=1.0,
+        num_neighbors=nn,
+        neg_sampling_ratio=neg_sampling,
         edge_label_index = (seed_edge_type, split_data[seed_edge_type].edge_label_index),
-        # edge_label_index = None,
-        edge_label = split_data[seed_edge_type].edge_label,
-        # edge_label = None,
-        batch_size=b,
-        shuffle=True,
+        edge_label=split_data[seed_edge_type].edge_label,
+        batch_size=batch_size,
+        shuffle=shuffle,
     )
-
-    # mini_batch_loader = HGTLoader(
-    #     data = data,
-    #     # Sample 20 nodes per type
-    #     num_samples = [20],
-    #     # Use a batch size of 128 for sampling training nodes of type paper
-    #     batch_size=128,
-    #     input_nodes=edge_label_index_tuple,
-    # )
-
-    # Inspect a sample:
-    # sampled_data = next(iter(train_loader))
-    for i, mbatch in enumerate(mini_batch_loader):
-        print(f'sample data for iteration : {i}')
-        print(mbatch)
-        print(f'---------------------------------------\n')
     return mini_batch_loader
 
 def create(data, model_name):
@@ -186,7 +173,6 @@ def learn_batch(loader, is_directed):
 
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
-        # print(f'epoch = {epoch}')
 
         # train for loaders of all edge_types, e.g : train_loader['skill','to','team'], train_loader['member','to','team']
         for seed_edge_type in edge_types:
@@ -207,39 +193,31 @@ def learn_batch(loader, is_directed):
                 optimizer.step()
                 total_loss += float(loss) * pred.numel()
                 total_examples += pred.numel()
-                # print(f'loss = {loss}')
-                # print(f'epoch = {epoch}')
-                # print(f'loss = {loss}')
-                # print(f'total_examples = {total_examples}')
-                # print(f'total_loss = {total_loss}')
-
-        # # validation part here maybe ?
-        # if epoch % 10 == 0 :
-        #     # auc = eval(val_loader)
-        #     print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
         print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
 # loader can be test or can be validation
+@torch.no_grad()
 def eval_batch(loader, is_directed):
     preds = []
     ground_truths = []
-    for sampled_data in tqdm.tqdm(loader):
-        with torch.no_grad():
+    for seed_edge_type in edge_types:
+        for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
             sampled_data.to(device)
-            preds.append(model(sampled_data, is_directed))
+            preds.append(model(sampled_data, seed_edge_type, is_directed))
             # ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
             if (type(sampled_data) == HeteroData):
                 # we have ground_truths per edge_label_index
-                ground_truths.append(sampled_data[edge_type].edge_label for edge_type in sampled_data.edge_types)
+                ground_truths.append(sampled_data[seed_edge_type].edge_label)
                 # ground_truth = sampled_data['user','rates','movie'].edge_label
             else:
-                ground_truths = sampled_data.edge_label
+                ground_truths.append(sampled_data.edge_label)
 
     pred = torch.cat(preds, dim=0).cpu().numpy()
     ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
     auc = roc_auc_score(ground_truth, pred)
     print()
-    print(f"AUC: {auc:.4f}")
+    print(f"AUC: {auc:.4f}\n")
+    print(f'................... ending eval...................\n')
     return auc
 
 def addargs(parser):
@@ -283,6 +261,9 @@ if __name__ == '__main__':
     heads = graph_params.settings['model']['gat']['heads']
     b = graph_params.settings['model']['b']
     lr = graph_params.settings['model']['lr']
+    ns = graph_params.settings['model']['negative_sampling']
+    # nn = num_neighbors
+    nn = graph_params.settings['model']['nn']
 
     # homogeneous_data = create_custom_homogeneous_data()
     # heterogeneous_data = create_custom_heterogeneous_data()
@@ -348,9 +329,9 @@ if __name__ == '__main__':
                         train_loader, val_loader, test_loader = {}, {}, {}
                         # create separate loaders for separate seed edge_types
                         for edge_type in edge_types:
-                            train_loader[edge_type] = create_mini_batch_loader(train_data, edge_type)
-                            val_loader[edge_type] = create_mini_batch_loader(val_data, edge_type)
-                            test_loader[edge_type] = create_mini_batch_loader(test_data, edge_type)
+                            train_loader[edge_type] = create_mini_batch_loader(train_data, edge_type, 'train')
+                            val_loader[edge_type] = create_mini_batch_loader(val_data, edge_type, 'val')
+                            test_loader[edge_type] = create_mini_batch_loader(test_data, edge_type, 'test')
 
                     # set the device
                     if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
@@ -370,10 +351,8 @@ if __name__ == '__main__':
                     else:
                         pass
                         # learn(train_data)
-                    # the sampled_data from mini_batch_loader does not properly show the
-                    # is_directed status
-                    # learn_batch(train_loader, is_directed)
                     torch.cuda.empty_cache()
-                    eval(test_data, 'test')
+                    if b:
+                        eval_batch(val_loader, is_directed)
                     # eval_batch(test_loader, is_directed)
                     torch.cuda.empty_cache()
