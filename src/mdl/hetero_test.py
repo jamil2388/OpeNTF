@@ -327,14 +327,10 @@ if __name__ == '__main__':
                             val_loader[edge_type] = create_mini_batch_loader(val_data, edge_type, 'val')
                             test_loader[edge_type] = create_mini_batch_loader(test_data, edge_type, 'test')
 
-                    # set the device
-                    if(args.use_cpu and model_name == 'gat' and graph_type in ['sm','stm'] and agg == 'none'):
-                        device = torch.device('cpu')
-                        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                    else:
-                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
                     torch.cuda.empty_cache()
+                    train_data.to(device)
                     # the train_data is needed to collect info about the metadata
                     model,optimizer = create(train_data, model_name)
 
