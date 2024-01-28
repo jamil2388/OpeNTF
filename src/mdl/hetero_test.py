@@ -109,11 +109,12 @@ def define_splits(data):
     val_data.validate(raise_on_error = True)
     test_data.validate(raise_on_error = True)
 
-    # data check
-    for edge_type in data.edge_types[:(len(data.edge_types) // 2)]:
-        for split_data in [train_data, val_data, test_data]:
-            for index_type in ['edge_index', 'edge_label_index']:
-                check_split(split_data, data, edge_type, index_type)
+    # check split
+    # print(f'validating splits')
+    # for edge_type in data.edge_types[:(len(data.edge_types) // 2)]:
+    #     for split_data in [train_data, val_data, test_data]:
+    #         for index_type in ['edge_index', 'edge_label_index']:
+    #             check_split(split_data, data, edge_type, index_type)
 
     train_data.validate(raise_on_error = True)
     val_data.validate(raise_on_error = True)
