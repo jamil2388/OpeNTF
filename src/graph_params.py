@@ -20,11 +20,11 @@ np.random.seed(0)
 
 settings = {
     'model':{
-            'negative_sampling' : 1.0,
+            'negative_sampling' : 2.0,
             'hidden_channels' : 16, # output size of the final embeddings
             'epochs' : 100,
-            'b' : 32, # 0 batching = taking whole data at once
-            'lr' : 0.1,
+            'b' : 64, # 0 batching = taking whole data at once
+            'lr' : 0.001,
             'nn' : [10, 5], # num_neighbors for batch loaders
             'gnn':{},
             'gcn':{},

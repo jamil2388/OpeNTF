@@ -35,14 +35,6 @@ import argparse
 Class definitions
 '''
 
-# draw any graph
-def draw_graph(G):
-
-    G = torch_geometric.utils.to_networkx(G.to_homogeneous())
-    nx.draw(G, node_color = "red", node_size = 1000, with_labels = True)
-    plt.margins(0.5)
-    plt.show()
-
 # load previously written graph files
 def load_data(filepath):
 
@@ -59,6 +51,15 @@ def load_data(filepath):
 
     # print(data)
     return data
+
+def plot_graph(x, y, xlabel, ylabel, title, fig_output):
+    plt.plot(x, y)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    print(f'\nsaving figure as : {fig_output}\n')
+    plt.savefig(fig_output)
+    # plot.show()
 
 def check_split(split_data, main_data, edge_type, index_type):
     d = {}
@@ -170,15 +171,14 @@ def create(data, model_name):
 def learn_batch(loader, is_directed):
     start = time.time()
     min_loss = 100000000000
-    epochs = graph_params.settings['model']['epochs']
-    emb = {}
+    loss_array = []
 
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
         torch.cuda.empty_cache()
         # train for loaders of all edge_types, e.g : train_loader['skill','to','team'], train_loader['member','to','team']
         for seed_edge_type in edge_types:
-            print(f'\nbatching for train_loader for seed_edge_type : {seed_edge_type}\n')
+            print(f'epoch {epoch:03d} : batching for train_loader for seed_edge_type : {seed_edge_type}')
             for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
                 optimizer.zero_grad()
 
@@ -196,7 +196,17 @@ def learn_batch(loader, is_directed):
                 optimizer.step()
                 total_loss += float(loss) * pred.numel()
                 total_examples += pred.numel()
-        print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
+        if(epoch % 10 == 0):
+            print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}.............\n")
+        loss_array.append((total_loss / total_examples))
+
+    # plot the figure and save
+    fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{hidden_channels}.png'
+    xlabel = 'Epochs'
+    ylabel = 'Loss'
+    title = 'Loss vs Epochs for Embedding Generation'
+    plot_graph(torch.arange(1, epochs + 1, 1), loss_array, xlabel, ylabel, title, fig_output)
+    print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
 
 # loader can be test or can be validation
 @torch.no_grad()
@@ -260,16 +270,15 @@ if __name__ == '__main__':
     args = addargs(parser)
 
     set_params(args)
+
+    epochs = graph_params.settings['model']['epochs']
     hidden_channels = graph_params.settings['model']['hidden_channels']
     heads = graph_params.settings['model']['gat']['heads']
     b = graph_params.settings['model']['b']
     lr = graph_params.settings['model']['lr']
     ns = graph_params.settings['model']['negative_sampling']
-    # nn = num_neighbors
-    nn = graph_params.settings['model']['nn']
+    nn = graph_params.settings['model']['nn'] # nn = num_neighbors
 
-    # homogeneous_data = create_custom_homogeneous_data()
-    # heterogeneous_data = create_custom_heterogeneous_data()
 
     # for domain in ['dblp/dblp.v12.json.filtered.mt5.ts2', 'imdb/title.basics.tsv.filtered.mt5.ts2']:
     for domain in args.domains:
@@ -279,15 +288,15 @@ if __name__ == '__main__':
     # for domain in ['gith/data.csv.filtered.mt5.ts2']:
     # for domain in ['dblp/toy.dblp.v12.json']:
 
-        log_filepath = f'../../data/preprocessed/{domain}'
-        if not os.path.isdir(log_filepath): os.makedirs(log_filepath)
-
-        logging.basicConfig(filename=f'{log_filepath}/emb.ns{graph_params.settings["model"]["negative_sampling"]}.h{heads}.d{hidden_channels}.log', format = '%(message)s', filemode = 'w', level=logging.INFO)
-        logging.info(f'\n-------------------------------------')
-        logging.info(f'-------------------------------------')
-        logging.info(f'Domain/Data : {domain}')
-        logging.info(f'-------------------------------------')
-        logging.info(f'-------------------------------------\n')
+        # log_filepath = f'../../data/preprocessed/{domain}'
+        # if not os.path.isdir(log_filepath): os.makedirs(log_filepath)
+        #
+        # logging.basicConfig(filename=f'{log_filepath}/emb.ns{graph_params.settings["model"]["negative_sampling"]}.h{heads}.d{hidden_channels}.log', format = '%(message)s', filemode = 'w', level=logging.INFO)
+        # logging.info(f'\n-------------------------------------')
+        # logging.info(f'-------------------------------------')
+        # logging.info(f'Domain/Data : {domain}')
+        # logging.info(f'-------------------------------------')
+        # logging.info(f'-------------------------------------\n')
 
         # for model_name in ['gcn', 'gs', 'gin', 'gat']:
         for model_name in args.gnn_models:
@@ -302,15 +311,19 @@ if __name__ == '__main__':
                     if (model_name == 'gcn' and graph_type != 'm'):
                         continue
 
-                    print(f'\nargs : {args}')
+                    print(f'\nargs : {args}\n')
 
+                    print(f'starting training for \n')
+                    print(f'---|||--- {domain}.{model_name}.{graph_type}.undir.{agg}.e{epochs}.b{b}.d{hidden_channels} ---|||--- \n')
+
+                    # e.g : domain = 'imdb/title.basics.tsv.filtered.mt5.ts2'
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
                     model_output = f'../../data/preprocessed/{domain}/emb'
                     if not os.path.isdir(model_output): os.makedirs(model_output)
 
-                    logging.info(f'\n-------------------------------------------------------------------------------')
-                    logging.info(f'Model : {model_name} || Graph Type : {graph_type} || Aggregation Type : {agg}')
-                    logging.info(f'-------------------------------------------------------------------------------\n')
+                    # logging.info(f'\n-------------------------------------------------------------------------------')
+                    # logging.info(f'Model : {model_name} || Graph Type : {graph_type} || Aggregation Type : {agg}')
+                    # logging.info(f'-------------------------------------------------------------------------------\n')
 
                     data = load_data(filepath)
                     is_directed = data.is_directed()
@@ -342,5 +355,14 @@ if __name__ == '__main__':
                     torch.cuda.empty_cache()
                     if b:
                         eval_batch(val_loader, is_directed)
+                    # store the embeddings
+                    with torch.no_grad():
+                        for node_type in data.node_types:
+                            data[node_type].n_id = torch.arange(data[node_type].x.shape[0])
+                        # for simplicity, we just pass seed_edge_type = edge_types[0]. This does not impact any output
+                        emb = model(data, edge_types[0], is_directed, emb = True)
+                        embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{hidden_channels}.emb.pt'
+                        torch.save(emb, embedding_output, pickle_protocol=4)
+                        print(f'\nsaved embedding as : {embedding_output} ..............\n')
                     # eval_batch(test_loader, is_directed)
                     torch.cuda.empty_cache()
