@@ -359,6 +359,7 @@ if __name__ == '__main__':
                     with torch.no_grad():
                         for node_type in data.node_types:
                             data[node_type].n_id = torch.arange(data[node_type].x.shape[0])
+                        data.to(device)
                         # for simplicity, we just pass seed_edge_type = edge_types[0]. This does not impact any output
                         emb = model(data, edge_types[0], is_directed, emb = True)
                         embedding_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{hidden_channels}.emb.pt'
