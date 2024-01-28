@@ -25,7 +25,7 @@ settings = {
             'epochs' : 100,
             'b' : 32, # 0 batching = taking whole data at once
             'lr' : 0.001,
-            'nn' : [20, 10], # num_neighbors for batch loaders
+            'nn' : [5, 5], # num_neighbors for batch loaders
             'gnn':{},
             'gcn':{},
             'gat':{

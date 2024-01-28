@@ -131,6 +131,7 @@ def create_mini_batch_loader(split_data, seed_edge_type, mode):
     batch_size =  b if mode == 'train' else (3 * b)
     shuffle = True if mode == 'train' else False
 
+    print(f'mini batch loader for mode {mode}')
     mini_batch_loader = LinkNeighborLoader(
         data=split_data,
         num_neighbors=nn,
@@ -173,9 +174,10 @@ def learn_batch(loader, is_directed):
 
     for epoch in range(1, epochs + 1):
         total_loss = total_examples = 0
-
+        torch.cuda.empty_cache()
         # train for loaders of all edge_types, e.g : train_loader['skill','to','team'], train_loader['member','to','team']
         for seed_edge_type in edge_types:
+            print(f'\nbatching for train_loader for seed_edge_type : {seed_edge_type}\n')
             for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
                 optimizer.zero_grad()
 
@@ -303,24 +305,15 @@ if __name__ == '__main__':
 
                     filepath = f'../../data/preprocessed/{domain}/gnn/{graph_type}.undir.{agg}.data.pkl'
                     model_output = f'../../data/preprocessed/{domain}/emb'
-                    # model_output = f'../../data/preprocessed/{domain}/{model_name}'
                     if not os.path.isdir(model_output): os.makedirs(model_output)
 
                     logging.info(f'\n-------------------------------------------------------------------------------')
                     logging.info(f'Model : {model_name} || Graph Type : {graph_type} || Aggregation Type : {agg}')
                     logging.info(f'-------------------------------------------------------------------------------\n')
 
-                    # load opentf datasets
-                    # filepath = '../../data/preprocessed/dblp/toy.dblp.v12.json/gnn/stm.undir.mean.data.pkl'
-                    # filepath = '../../data/preprocessed/dblp/dblp.v12.json.filtered.mt5.ts2/gnn/stm.undir.mean.data.pkl'
                     data = load_data(filepath)
                     is_directed = data.is_directed()
 
-                    # # draw the graph
-                    # draw_graph(data)
-
-                    # train_data, val_data, test_data = define_splits(homogeneous_data)
-                    # train_data, val_data, test_data = define_splits(heterogeneous_data)
                     train_data, val_data, test_data, edge_types, rev_edge_types = define_splits(data)
                     # validate_splits(train_data, val_data, test_data)
 
@@ -341,8 +334,6 @@ if __name__ == '__main__':
                         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                     print(f"Device: '{device}'")
                     torch.cuda.empty_cache()
-                    train_data.to(device)
-
                     # the train_data is needed to collect info about the metadata
                     model,optimizer = create(train_data, model_name)
 
