@@ -179,7 +179,7 @@ def learn_batch(loader, is_directed):
         # train for loaders of all edge_types, e.g : train_loader['skill','to','team'], train_loader['member','to','team']
         for seed_edge_type in edge_types:
             print(f'epoch {epoch:03d} : batching for train_loader for seed_edge_type : {seed_edge_type}')
-            for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
+            for sampled_data in loader[seed_edge_type]:
                 optimizer.zero_grad()
 
                 sampled_data.to(device)
@@ -214,7 +214,7 @@ def eval_batch(loader, is_directed):
     preds = []
     ground_truths = []
     for seed_edge_type in edge_types:
-        for sampled_data in tqdm.tqdm(loader[seed_edge_type]):
+        for sampled_data in loader[seed_edge_type]:
             sampled_data.to(device)
             preds.append(model(sampled_data, seed_edge_type, is_directed))
             # ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
