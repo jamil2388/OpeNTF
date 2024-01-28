@@ -21,7 +21,6 @@ class GS(torch.nn.Module):
 
 class Classifier(torch.nn.Module):
     def forward(self, source_node_emb, target_node_emb, edge_label_index) -> Tensor:
-        print(f'classify')
         # Convert node embeddings to edge-level representations:
         # (e.g. : shapes -> edge_feat_source (4, 16), edge_feat_target (4, 16))
         # the number of rows correspond to total number of labeled_edges in the seed_edge_type, in this case, 4
