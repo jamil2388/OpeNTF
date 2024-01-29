@@ -123,7 +123,7 @@ def create_splits(data):
     # We can leverage the `RandomLinkSplit()` transform for this from PyG:
     transform = T.RandomLinkSplit(
         num_val=0.1,
-        num_test=0.1,
+        num_test=0.0,
         disjoint_train_ratio=0.3,
         neg_sampling_ratio=2.0,
         add_negative_train_samples=False,
@@ -172,15 +172,6 @@ def create_train_loader(train_data):
     edge_label = train_data["user", "rates", "movie"].edge_label
     b = 128
     ns = 2.0
-    # train_loader = LinkNeighborLoader(
-    #     data=train_data,
-    #     num_neighbors=[20, 10],
-    #     neg_sampling_ratio=2.0,
-    #     edge_label_index=(("user", "rates", "movie"), edge_label_index),
-    #     edge_label=edge_label,
-    #     batch_size=128,
-    #     shuffle=True,
-    # )
     train_loader = LinkNeighborLoader(
         data=train_data,
         num_neighbors=[20, 10],

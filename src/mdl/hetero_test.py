@@ -96,7 +96,7 @@ def define_splits(data):
 
     transform = T.RandomLinkSplit(
         num_val=0.1,
-        num_test=0.1,
+        num_test=0.0,
         disjoint_train_ratio=0.3,
         neg_sampling_ratio=ns,
         add_negative_train_samples=False,
@@ -240,7 +240,7 @@ def addargs(parser):
     parser.add_argument('-agg', nargs = '+', help = 'the aggregation types to use')
     parser.add_argument('-epochs', type = int, help = 'number of epochs for gnn training')
     parser.add_argument('-dim', type = int, help = 'the embedding dimension to use')
-    parser.add_argument('-heads', type = int, help = 'the number of computational heads to use for gat models')
+    parser.add_argument('--heads', type = int, required=False, help = 'the number of computational heads to use for gat models')
     parser.add_argument('--use_cpu', type = int, required=False, help = '1 if you want gat to use cpu')
 
     args = parser.parse_args()

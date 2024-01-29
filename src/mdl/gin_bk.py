@@ -11,8 +11,7 @@ class GIN(torch.nn.Module):
     def __init__(self, dim_h):
         super(GIN, self).__init__()
         self.conv1 = GINConv(
-            Sequential(Linear(dim_h, dim_h),
-                       BatchNorm1d(dim_h), ReLU(),
+            Sequential(Linear(dim_h, dim_h), BatchNorm1d(dim_h), ReLU(),
                        Linear(dim_h, dim_h), ReLU()))
         self.conv2 = GINConv(
             Sequential(Linear(dim_h, dim_h), BatchNorm1d(dim_h), ReLU(),
@@ -20,25 +19,18 @@ class GIN(torch.nn.Module):
         self.conv3 = GINConv(
             Sequential(Linear(dim_h, dim_h), BatchNorm1d(dim_h), ReLU(),
                        Linear(dim_h, dim_h), ReLU()))
-
-        # need to justify why we need these two linear layers
-        self.lin1 = Linear(dim_h, dim_h)
-        self.lin2 = Linear(dim_h, dim_h)
+        self.conv4 = GINConv(
+            Sequential(Linear(dim_h, dim_h), BatchNorm1d(dim_h), ReLU(),
+                       Linear(dim_h, dim_h), ReLU()))
 
     def forward(self, x, edge_index):
         # Node embeddings
-        h = self.conv1(x, edge_index)
-        h = self.conv2(h, edge_index)
-        h = self.conv3(h, edge_index)
+        x = self.conv1(x, edge_index)
+        x = self.conv2(x, edge_index)
+        x = self.conv3(x, edge_index)
+        x = self.conv4(x, edge_index)
 
-        # Classifier
-        h = self.lin1(h)
-        h = h.relu()
-        h = F.dropout(h, p=0.5, training=self.training)
-        h = self.lin2(h)
-
-        # should we return a softmaxed version of h? (used in gin example)
-        return h
+        return x
 
 
 # Our final classifier applies the dot-product between source and destination
@@ -60,17 +52,25 @@ class Model(torch.nn.Module):
         super().__init__()
         if(type(data) == HeteroData):
             self.node_lin = []
-            self.node_emb = []
+            # self.node_emb = []
             # for each node_type
             node_types = data.node_types
             # linear transformers and node embeddings based on the num_features and num_nodes of the node_types
             # these two are generated such that both of them has the same shape and they can be added together
             for i, node_type in enumerate(node_types):
-                self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
-                self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
+                if (data.is_cuda):
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels).cuda())
+                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels).cuda())
+                else:
+                    self.node_lin.append(torch.nn.Linear(data[node_type].num_features, hidden_channels))
+                    # self.node_emb.append(torch.nn.Embedding(data[node_type].num_nodes, hidden_channels))
         else:
-            self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
-            self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
+            if (data.is_cuda):
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels).cuda()
+                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels).cuda()
+            else:
+                self.node_lin = torch.nn.Linear(data.num_features, hidden_channels)
+                # self.node_emb = torch.nn.Linear(data.num_nodes, hidden_channels)
 
         # Instantiate homogeneous gs:
         self.gin = GIN(hidden_channels)

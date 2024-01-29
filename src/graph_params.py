@@ -29,7 +29,7 @@ settings = {
             'gnn':{},
             'gcn':{},
             'gat':{
-                'heads' : 3,
+                'heads' : 8,
             },
             'gin':{},
             'n2v':{

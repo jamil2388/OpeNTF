@@ -10,10 +10,19 @@ class GS(torch.nn.Module):
 
         self.conv1 = SAGEConv(hidden_channels, hidden_channels)
         self.conv2 = SAGEConv(hidden_channels, hidden_channels)
+        self.conv3 = SAGEConv(hidden_channels, hidden_channels)
+        self.conv4 = SAGEConv(hidden_channels, hidden_channels)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
-        x = F.relu(self.conv1(x, edge_index))
-        x = self.conv2(x, edge_index)
+        # experimental
+        # x = F.dropout(self.conv1(x, edge_index).relu(), p = 0.5, training = self.training)
+        # x = F.dropout(self.conv2(x, edge_index).relu(), p = 0.5, training = self.training)
+        # x = self.conv3(x, edge_index)
+
+        x = self.conv1(x, edge_index).relu()
+        x = self.conv2(x, edge_index).relu()
+        x = self.conv3(x, edge_index).relu()
+        x = self.conv4(x, edge_index)
         return x
 
 class Classifier(torch.nn.Module):
@@ -71,7 +80,6 @@ class Model(torch.nn.Module):
     def forward(self, data, seed_edge_type, is_directed, emb = False) -> Tensor:
         if(type(data) == HeteroData):
             self.x_dict = {}
-            edge_types = data.edge_types if is_directed else data.edge_types[:(len(data.edge_types)) // 2]
             for i, node_type in enumerate(data.node_types):
                 self.x_dict[node_type] = self.node_lin[i](data[node_type].x) + self.node_emb[i](data[node_type].n_id)
             # `x_dict` holds embedding matrices of all node types
