@@ -174,9 +174,12 @@ def learn_batch(loader, is_directed):
     min_loss = 100000000000
     loss_array = []
     val_auc_array = []
+    val_loss_array = []
 
     for epoch in range(1, epochs + 1):
-        val_auc_array.append(eval_batch(val_loader, is_directed))
+        l1, l2 = eval_batch(val_loader, is_directed)
+        val_loss_array.append(l1)
+        val_auc_array.append(l2)
         total_loss = 0
         total_examples = 0
         torch.cuda.empty_cache()
@@ -201,7 +204,7 @@ def learn_batch(loader, is_directed):
                 total_loss += float(loss) * pred.numel()
                 total_examples += pred.numel()
         if(epoch % 10 == 0):
-            print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}.............\n")
+            print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.6f}.............\n")
         loss_array.append((total_loss / total_examples))
 
     # plot the figure and save
@@ -210,6 +213,12 @@ def learn_batch(loader, is_directed):
     ylabel = 'Loss'
     title = 'Loss vs Epochs for Embedding Generation'
     plot_graph(torch.arange(1, epochs + 1, 1), loss_array, xlabel, ylabel, title, fig_output)
+    fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.val_loss_per_epoch.png'
+    xlabel = 'Epochs'
+    ylabel = 'Val Loss'
+    title = 'Validation Loss vs Epochs for Embedding Generation'
+    plot_graph(torch.arange(1, epochs + 1, 1), val_loss_array, xlabel, ylabel, title, fig_output)
+    print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
     fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.val_auc_per_epoch.png'
     xlabel = 'Epochs'
     ylabel = 'Val AUC'
@@ -236,11 +245,13 @@ def eval_batch(loader, is_directed):
 
     pred = torch.cat(preds, dim=0).cpu().numpy()
     ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
+    loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
     auc = roc_auc_score(ground_truth, pred)
     print()
-    print(f"AUC: {auc:.4f}\n")
-    print(f'................... ending eval...................\n')
-    return auc
+    print(f"Val AUC: {auc:.6f}")
+    print(f'Val loss : {loss:.6f}\n')
+    # print(f'................... ending eval...................\n')
+    return loss, auc
 
 def addargs(parser):
     parser.add_argument('-domains', nargs = '+', help = 'the domain of the dataset along with the version')
@@ -355,6 +366,7 @@ if __name__ == '__main__':
                         torch.cuda.empty_cache()
                         if b:
                             eval_batch(val_loader, is_directed)
+                        print(f'-------------- ending eval --------------')
                         # store the embeddings
                         with torch.no_grad():
                             for node_type in data.node_types:
