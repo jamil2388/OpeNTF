@@ -52,8 +52,14 @@ def load_data(filepath):
     # print(data)
     return data
 
-def plot_graph(x, y, xlabel, ylabel, title, fig_output):
-    plt.plot(x, y)
+
+def plot_graph(x, y, *args, xlabel='Epochs', ylabel='Loss', title='Loss vs Epochs', fig_output='plot.png'):
+    plt.plot(x, y, label='Train')  # Plot the first set of data
+
+    if len(args) > 0:
+        plt.plot(x, args[0], label='Valid')  # Plot the second set of data
+        plt.legend()  # Add legend if there are two sets of data
+
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -177,6 +183,7 @@ def learn_batch(loader, is_directed):
     val_loss_array = []
 
     for epoch in range(1, epochs + 1):
+        optimizer.zero_grad() # ensuring clearing out the gradients before each validation loop
         l1, l2 = eval_batch(val_loader, is_directed)
         val_loss_array.append(l1)
         val_auc_array.append(l2)
@@ -198,10 +205,10 @@ def learn_batch(loader, is_directed):
                 else:
                     ground_truth = sampled_data.edge_label
                 loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
-
                 loss.backward()
                 optimizer.step()
-                total_loss += float(loss) * pred.numel()
+
+                total_loss += float(loss) * pred.numel() # each batch might not contain same number of predictions, so we normalize it using the individual number of preds each turn
                 total_examples += pred.numel()
         if(epoch % 10 == 0):
             print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.6f}.............\n")
@@ -209,21 +216,9 @@ def learn_batch(loader, is_directed):
 
     # plot the figure and save
     fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.png'
-    xlabel = 'Epochs'
-    ylabel = 'Loss'
-    title = 'Loss vs Epochs for Embedding Generation'
-    plot_graph(torch.arange(1, epochs + 1, 1), loss_array, xlabel, ylabel, title, fig_output)
-    fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.val_loss_per_epoch.png'
-    xlabel = 'Epochs'
-    ylabel = 'Val Loss'
-    title = 'Validation Loss vs Epochs for Embedding Generation'
-    plot_graph(torch.arange(1, epochs + 1, 1), val_loss_array, xlabel, ylabel, title, fig_output)
-    print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
+    plot_graph(torch.arange(1, epochs + 1, 1), loss_array, val_loss_array, fig_output=fig_output)
     fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.val_auc_per_epoch.png'
-    xlabel = 'Epochs'
-    ylabel = 'Val AUC'
-    title = 'Validation AUC vs Epochs for Embedding Generation'
-    plot_graph(torch.arange(1, epochs + 1, 1), val_auc_array, xlabel, ylabel, title, fig_output)
+    plot_graph(torch.arange(1, epochs + 1, 1), val_auc_array, xlabel='Epochs', ylabel='Val AUC', title=f'Validation AUC vs Epochs for Embedding Generation', fig_output=fig_output)
     print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
 
 # loader can be test or can be validation
@@ -231,25 +226,33 @@ def learn_batch(loader, is_directed):
 def eval_batch(loader, is_directed):
     preds = []
     ground_truths = []
+    total_loss = 0
+    total_examples = 0
     for seed_edge_type in edge_types:
         for sampled_data in loader[seed_edge_type]:
             sampled_data.to(device)
-            preds.append(model(sampled_data, seed_edge_type, is_directed))
-            # ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
+            tmp_pred = model(sampled_data, seed_edge_type, is_directed)
             if (type(sampled_data) == HeteroData):
                 # we have ground_truths per edge_label_index
-                ground_truths.append(sampled_data[seed_edge_type].edge_label)
-                # ground_truth = sampled_data['user','rates','movie'].edge_label
+                tmp_ground_truth = sampled_data[seed_edge_type].edge_label
             else:
-                ground_truths.append(sampled_data.edge_label)
+                tmp_ground_truth = sampled_data.edge_label
+
+            assert tmp_pred.shape == tmp_ground_truth.shape
+            loss = F.binary_cross_entropy_with_logits(tmp_pred, tmp_ground_truth)
+            total_loss += float(loss) * tmp_pred.numel()
+            total_examples += tmp_pred.numel()
+
+            preds.append(tmp_pred)
+            ground_truths.append(tmp_ground_truth)
 
     pred = torch.cat(preds, dim=0).cpu().numpy()
     ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
-    loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
+    loss = total_loss / total_examples
     auc = roc_auc_score(ground_truth, pred)
     print()
-    print(f"Val AUC: {auc:.6f}")
-    print(f'Val loss : {loss:.6f}\n')
+    print(f'Val loss : {loss:.6f}')
+    print(f"Val AUC: {auc:.6f}\n")
     # print(f'................... ending eval...................\n')
     return loss, auc
 
