@@ -36,13 +36,24 @@ class GIN(torch.nn.Module):
 # Our final classifier applies the dot-product between source and destination
 # node embeddings to derive edge-level predictions:
 class Classifier(torch.nn.Module):
+    def __init__(self, dim_h):
+        super().__init__()
+        self.lin1 = torch.nn.Linear(2 * dim_h, dim_h)
+        self.lin2 = torch.nn.Linear(dim_h, 1)
+
     def forward(self, source_node_emb, target_node_emb, edge_label_index) -> Tensor:
         # Convert node embeddings to edge-level representations:
+        # (e.g. : shapes -> edge_feat_source (4, 16), edge_feat_target (4, 16))
+        # the number of rows correspond to total number of labeled_edges in the seed_edge_type, in this case, 4
         edge_feat_source = source_node_emb[edge_label_index[0]]
         edge_feat_target = target_node_emb[edge_label_index[1]]
 
+        z = torch.cat([edge_feat_source, edge_feat_target], dim=-1)
+        z = self.lin1(z).relu()
+        z = self.lin2(z)
+
         # Apply dot-product to get a prediction per supervision edge in the edge_label_index
-        return (edge_feat_source * edge_feat_target).sum(dim=-1)
+        return z.view(-1)
 
 
 class Model(torch.nn.Module):
@@ -80,7 +91,7 @@ class Model(torch.nn.Module):
             self.gin = to_hetero(self.gin, metadata=data.metadata())
 
         # instantiate the predictor class
-        self.classifier = Classifier()
+        self.classifier = Classifier(hidden_channels)
 
     def forward(self, data, is_directed) -> Tensor:
         x_dict = {}
