@@ -353,6 +353,25 @@ if __name__ == '__main__':
                         train_data, val_data, test_data, edge_types, rev_edge_types = define_splits(data)
                         # validate_splits(train_data, val_data, test_data)
 
+                        # han needs extra metapath information for applying more aware attention
+                        if model_name == 'han':
+                            from torch_geometric.transforms import AddMetaPaths
+
+                            if graph_type == 'sm':
+                                metapaths = [[('skill', 'to', 'member'), ('member', 'rev_to', 'skill')]]
+                            elif graph_type == 'stm':
+                                metapaths = [
+                                    ('member', 'to', 'team'),
+                                    ('team', 'rev_to', 'skill'),
+                                    ('skill', 'to', 'team'),
+                                    ('team', 'rev_to', 'member'),
+                                ]
+
+                            train_data = AddMetaPaths(metapaths=metapaths, drop_orig_edge_types=False,
+                                                      drop_unconnected_node_types=False)(train_data)
+                            val_data = AddMetaPaths(metapaths=metapaths, drop_orig_edge_types=False,
+                                                    drop_unconnected_node_types=False)(val_data)
+
                         ## Sampling for batching > 0
                         if b:
                             train_loader, val_loader, test_loader = {}, {}, {}

@@ -5,6 +5,9 @@ from torch.nn import Linear, Dropout
 from torch_geometric.nn import HANConv, to_hetero
 from torch_geometric.data import Data,HeteroData
 
+# HAN applies attention on metapath based neighbors of nodes. So we need to add metapaths to
+# the existing heterodata object (data.HeteroData) to make this information available
+
 class HAN(torch.nn.Module):
   def __init__(self, hidden_channels, metadata, heads=2):
     super().__init__()
