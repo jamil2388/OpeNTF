@@ -23,6 +23,8 @@ import src.graph_params as graph_params
 from src.mdl.graph_sage import Model as GSModel
 from src.mdl.gcn import Model as GCNModel
 from src.mdl.gat import Model as GATModel
+from src.mdl.gatv2 import Model as GATV2Model
+from src.mdl.han import Model as HANModel
 from src.mdl.gin import Model as GINModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
@@ -163,6 +165,12 @@ def create(data, model_name):
     elif (model_name == 'gat'):
         # gat
         model = GATModel(hidden_channels=dim, data = data, b=b)
+    elif (model_name == 'gatv2'):
+        # gatv2
+        model = GATV2Model(hidden_channels=dim, data = data, b=b)
+    elif (model_name == 'han'):
+        # han
+        model = HANModel(hidden_channels=dim, data = data, b=b)
     elif (model_name == 'gin'):
         # gin
         model = GINModel(hidden_channels=dim, data=data, b=b)
