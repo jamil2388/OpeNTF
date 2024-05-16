@@ -360,12 +360,12 @@ if __name__ == '__main__':
                             if graph_type == 'sm':
                                 metapaths = [[('skill', 'to', 'member'), ('member', 'rev_to', 'skill')]]
                             elif graph_type == 'stm':
-                                metapaths = [[
-                                    ('member', 'to', 'team'),
-                                    ('team', 'rev_to', 'skill'),
-                                    ('skill', 'to', 'team'),
-                                    ('team', 'rev_to', 'member'),
-                                ]]
+                                metapaths = [
+                                    [('member', 'to', 'team'), ('team', 'rev_to', 'skill'), ('skill', 'to', 'team'), ('team', 'rev_to', 'member')],
+                                    [('skill', 'to', 'team'), ('team', 'rev_to', 'member'), ('member', 'to', 'team'), ('team', 'rev_to', 'skill')],
+                                    [('member', 'to', 'team'), ('team', 'rev_to', 'member')],
+                                    [('skill', 'to', 'team'), ('team', 'rev_to', 'skill')],
+                                ]
 
                             train_data = AddMetaPaths(metapaths=metapaths, drop_orig_edge_types=False,
                                                       drop_unconnected_node_types=False)(train_data)

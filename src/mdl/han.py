@@ -9,7 +9,7 @@ from torch_geometric.data import Data,HeteroData
 # the existing heterodata object (data.HeteroData) to make this information available
 
 class HAN(torch.nn.Module):
-  def __init__(self, hidden_channels, metadata, heads=2):
+  def __init__(self, hidden_channels, metadata, heads=8):
     super().__init__()
     self.conv1 = HANConv(hidden_channels, hidden_channels, metadata = metadata, heads = heads)
     self.conv2 = HANConv(hidden_channels, hidden_channels, metadata = metadata, heads = heads)
