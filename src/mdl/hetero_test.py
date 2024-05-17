@@ -26,6 +26,7 @@ from src.mdl.gat import Model as GATModel
 from src.mdl.gatv2 import Model as GATV2Model
 from src.mdl.han import Model as HANModel
 from src.mdl.gin import Model as GINModel
+from src.mdl.gine import Model as GINEModel
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 import time
@@ -174,6 +175,9 @@ def create(data, model_name):
     elif (model_name == 'gin'):
         # gin
         model = GINModel(hidden_channels=dim, data=data, b=b)
+    elif (model_name == 'gine'):
+        # gine
+        model = GINEModel(hidden_channels=dim, data=data, b=b)
 
     print(model)
     print(f'\nDevice = {device}')
