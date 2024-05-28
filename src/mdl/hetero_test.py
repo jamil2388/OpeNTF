@@ -109,7 +109,7 @@ def define_splits(data):
         num_test=0.0,
         disjoint_train_ratio=0.3,
         neg_sampling_ratio=ns,
-        add_negative_train_samples=False,
+        add_negative_train_samples=True,
         edge_types= edge_types,
         rev_edge_types=rev_edge_types,
     )
@@ -147,7 +147,7 @@ def create_mini_batch_loader(split_data, seed_edge_type, mode):
     mini_batch_loader = LinkNeighborLoader(
         data=split_data,
         num_neighbors=nn,
-        neg_sampling_ratio=neg_sampling, # prev : neg_sampling
+        neg_sampling_ratio=None, # prev : neg_sampling
         edge_label_index = (seed_edge_type, split_data[seed_edge_type].edge_label_index),
         edge_label=split_data[seed_edge_type].edge_label,
         batch_size=batch_size,
