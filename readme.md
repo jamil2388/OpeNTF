@@ -1,5 +1,23 @@
-# ``OpeNTF``: An Open-Source Neural Team Formation Benchmark Library 
-Team formation involves selecting a team of skillful experts who will, more likely than not, accomplish a task. Researchers have proposed a rich body of computational methods to automate the traditionally tedious and error-prone manual process. We previously released OpeNTF, an open-source framework hosting canonical neural models as the cutting-edge class of approaches, along with large-scale training datasets from varying domains. In this paper, we contribute OpeNTF2 that extends the initial release in two prime directions. (1) The first of its kind in neural team formation, we integrated `debiasing reranking algorithms` to mitigate the `popularity` and `gender` disparities in the neural models’ team recommendations based on two alternative notions of fairness: equality of opportunity and demographic parity. (2) We further contribute a `temporal` training strategy for neural models’ training to capture the evolution of experts’ skills and collaboration ties over time, as opposed to randomly shuffled training datasets. OpeNTF2 is a forward-looking effort to automate team formation via fairness-aware and time-sensitive methods. AI-ML-based solutions are increasingly impacting how resources are allocated to various groups in society, and ensuring fairness and time are systematically considered is key.
+# ``GNN Transferred OpeNTF``: An Open-Source Neural Team Formation Benchmark Library Enhanced by Transfer Learning with Graph Neural Networks 
+Formation of a competent team with skillful experts to achieve success in a project is a crucial task.
+The Neural team recommenders by researchers have shown unprecedented success over tediously computational methods
+in the past. With the recent progress in this line of research, the neural team recommenders now employ 
+transferred graph representation learning to surpass any previous methods in forming expert teams 
+that are almost surely successful in completing the specific task in question. 
+These models treat the problem as an expert recommendation task, where the required skills' dense 
+vector representations are derived from a graph neural network applied to a collaboration graph. 
+However, there has not been a systematic comparative study on the effects of 
+(1) the structure of the collaboration graph, 
+(2) the node representation learning technique, and 
+(3) the architecture of the final neural recommender on the effectiveness of the recommended teams.
+
+We previously released OpeNTF, an open-source framework hosting canonical neural models as the cutting-edge 
+class of approaches, along with large-scale training datasets from varying domains. 
+In this paper, we augment the neural benchmark with transfer learning from GNN methods. This encompasses 
+two types of heterogeneous collaboration graphs representing skill-expert and skill-team-expert connections and 
+seven graph representation learning techniques (GNN and Random Walk based) to obtain dense vector representations of skills for 
+both variational and non-variational neural recommenders.
+
 
 <table border=0>
 <tr>
@@ -20,12 +38,12 @@ Team formation involves selecting a team of skillful experts who will, more like
 - [5. Acknowledgement](#5-acknowledgement)
 - [6. License](#6-license)
 - [7. Citation](#7-citation)
-- [8. Awards](#8-awards)
+
 
 
 
 </td>
-<td><img src='./misc/adila_flow_.png' width="600" align="right"" /></td>
+<td><img src='./misc/gnn/gnn_pipeline.jpg' width="100%" align="right"" /></td>
 <!-- <td><img src='./src/mdl/team_inheritance_hierarchy.png' width="90%%" /></td> -->
 </tr>
 </table>
@@ -224,66 +242,12 @@ We kick-started our experiments based on the best results from the non-temporal 
 
 <p align="center"><img src='./output/ecir_results.PNG'></p>
 
-Full predictions of all models on test and training sets and the values of evaluation metrics are available in a rar file and will be delivered upon request! 
-
 
 
 
 ## 5. Acknowledgement:
-We benefit from [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval), [``gensim``](https://radimrehurek.com/gensim/), [Josh Feldman's blog](https://joshfeldman.net/WeightUncertainty/), and other libraries. We would like to thank the authors of these libraries and helpful resources.
+We benefit from  bayesian-torch (https://github.com/IntelLabs/bayesian-torch), PyG (https://github.com/pyg-team/pytorch_geometric), [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval), [``gensim``](https://radimrehurek.com/gensim/), [Josh Feldman's blog](https://joshfeldman.net/WeightUncertainty/) and other libraries. We would like to thank the authors of these libraries and helpful resources.
   
-## 6. License:
-©2024. This work is licensed under a [CC BY-NC-SA 4.0](license.txt) license.
+[//]: # (## 6. License:)
 
-## 7. Citation:
-```
-@inproceedings{DBLP:conf/ecir/FaniBDS24,
-  author    = {Hossein Fani and Reza Barzegar and Arman Dashti and Mahdis Saeedi},
-  title     = {A Training Strategy for Future Collaborative Team Prediction},
-  booktitle = {Advances in Information Retrieval - 46th European Conference on Information Retrieval, {ECIR} 2024, Glasgow, Scotland, March 24th-28, 2024},
-  series    = {Lecture Notes in Computer Science},
-  volume    = {},
-  pages     = {},
-  publisher = {Springer},
-  year      = {2024},
-  url       = {https://doi.org/},
-  doi       = {},
-  biburl    = {},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-  ```
-
-```
-@inproceedings{DBLP:conf/cikm/DashtiSF22,
-  author    = {Arman Dashti and Saeed Samet and Hossein Fani},
-  title     = {Effective Neural Team Formation via Negative Samples},
-  booktitle = {Proceedings of the 31st {ACM} International Conference on Information {\&} Knowledge Management, Atlanta, GA, USA, October 17-21, 2022},
-  pages     = {3908--3912},
-  publisher = {{ACM}},
-  year      = {2022},
-  url       = {https://doi.org/10.1145/3511808.3557590},
-  doi       = {10.1145/3511808.3557590},
-  biburl    = {https://dblp.org/rec/conf/cikm/DashtiSF22.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-  ```
-  ```
-@inproceedings{DBLP:conf/cikm/DashtiSPF22,
-  author    = {Arman Dashti and Karan Saxena and Dhwani Patel and Hossein Fani},
-  title     = {OpeNTF: {A} Benchmark Library for Neural Team Formation},
-  booktitle = {Proceedings of the 31st {ACM} International Conference on Information {\&} Knowledge Management, Atlanta, GA, USA, October 17-21, 2022},
-  pages     = {3913--3917},
-  publisher = {{ACM}},
-  year      = {2022},
-  url       = {https://doi.org/10.1145/3511808.3557526},
-  doi       = {10.1145/3511808.3557526},
-  biburl    = {https://dblp.org/rec/conf/cikm/DashtiSPF22.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-```
-
-## 8. Awards:
-
-> [CAD$300, Gold medalist, UWill Discover, 2022](https://scholar.uwindsor.ca/uwilldiscover/2022/2022Day3/30/)
-
-> CAD$300, Best Research, Demo Day, School of Computer Science, University of Windsor, 2022. 
+[//]: # (©2024. This work is licensed under a [CC BY-NC-SA 4.0]&#40;license.txt&#41; license.)
