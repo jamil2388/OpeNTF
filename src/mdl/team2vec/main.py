@@ -14,6 +14,14 @@ def addargs(parser):
     embedding.add_argument('--output', nargs='+', type=str, required=False, help='Output folder; e.g., ../data/preprocessed/dblp/toy.dblp.v12.json/')
     embedding.add_argument('--graph_only', type=int, required=False, help='if true, then only generates graph files and returns')
 
+    # args for gnn methods
+    gnn_args = parser.add_argument_group('Gnn Settings')
+    gnn_args.add_argument('--agg', type=str, required=False, help='The aggregation method used for the graph data; e.g : mean, none, max, min etc.')
+    gnn_args.add_argument('--d', type=int, required=False, help='Embedding dimension; e.g : 4, 8, 16, 32 etc.')
+    gnn_args.add_argument('--e', type=int, required=False, help='Train epochs ; e.g : 5, 100 etc.')
+    gnn_args.add_argument('--ns', type=int, required=False, help='Train epochs ; e.g : 2, 3, 5 etc.')
+    gnn_args.add_argument('--graph_type', type=str, required=False, help='Graph types used for the training; e.g : sm, stm etc.')
+
 def run(teamsvecs_file, indexes_file, model, output, emb_output = None):
     if not os.path.isdir(output): os.makedirs(output)
     with open(teamsvecs_file, 'rb') as teamsvecs_f, open(indexes_file, 'rb') as indexes_f:
@@ -21,16 +29,18 @@ def run(teamsvecs_file, indexes_file, model, output, emb_output = None):
 
         if model == 'w2v':
             import wnn
-            settings = {'d': params.settings['model']['d'],
+            # for d in params.settings['model'][model]['d']: # this is specific to w2v for now
+            settings = {'d': params.settings['model'][model]['d'],
                         'e': params.settings['model']['e'],
                         'dm': params.settings['model'][model]['dm'],
                         'dbow_words': params.settings['model'][model]['dbow_words'],
                         'window': params.settings['model'][model]['dbow_words'],
-                        'embtype': params.settings['model'][model]['embtype']}
-
+                        'embtype': params.settings['model'][model]['embtype'],
+                        'max_epochs' : params.settings['model'][model]['max_epochs']
+                        }
             output_ = output + f'{settings["embtype"]}.'
-            wnn.run(f'{args.teamsvecs}teamsvecs.pkl', f'{args.teamsvecs}indexes.pkl', settings, output_)
-            #or
+            # wnn.run(teamsvecs_file, indexes_file, settings, output_)
+
             t2v = wnn.Wnn(teamsvecs, indexes, settings, output_)
             t2v.init()
             t2v.train()
@@ -41,7 +51,7 @@ def run(teamsvecs_file, indexes_file, model, output, emb_output = None):
         # output_ = output + f'{params.settings["graph"]["edge_types"][1]}.{"dir" if params.settings["graph"]["dir"] else "undir"}.{str(params.settings["graph"]["dup_edge"]).lower()}/'
         output_ = output + f'{params.settings["graph"]["edge_types"][1]}.{"dir" if params.settings["graph"]["dir"] else "undir"}.{str(params.settings["graph"]["dup_edge"]).lower()}.'
         t2v = gnn.Gnn(teamsvecs, indexes, params.settings['graph'], output_)
-        t2v.init() # call the team2vec's init
+        t2v.init() # call the team2vec's init, this will lazy load the graph data e.g = "{domain}/gnn/stm.undir.mean.data.pkl"
         if(args.graph_only):
             return
 
@@ -70,7 +80,7 @@ def run(teamsvecs_file, indexes_file, model, output, emb_output = None):
             t2v.model_name = 'm2v'
             t2v.init() # call the m2v's init
             t2v.model = MetaPath2Vec(t2v.data.edge_index_dict, embedding_dim=t2v.settings['d'],
-                                     metapath=t2v.settings['metapath'], walk_length=t2v.settings['walk_length'],
+                                     metapath=t2v.settings['metapath'][edge_type[1]], walk_length=t2v.settings['walk_length'],
                                      context_size=t2v.settings['context_size'],
                                      walks_per_node=t2v.settings['walks_per_node'],
                                      num_negative_samples=t2v.settings['ns'],
@@ -88,10 +98,18 @@ def run(teamsvecs_file, indexes_file, model, output, emb_output = None):
 
         # gcn (for homogeneous only)
         elif model == 'gnn.gcn':
-            from gcn import Gcn as GCNModel
+            from gcn_old import Gcn as GCNModel
             t2v.model = GCNModel(hidden_channels=10, data=t2v.data)
             t2v.optimizer = torch.optim.Adam(t2v.model.parameters(), lr=params.settings['model']['lr'])
             t2v.model_name = 'gcn'
+
+        elif model in {"gnn.gs", "gnn.gin", "gnn.gat", "gnn.gatv2", "gnn.han", "gnn.gine"}:
+            t2v.settings = params.settings['model'][model]
+            t2v.model_name = model.split(".")[1]
+            t2v.init_model(emb_output)
+            t2v.train(t2v.settings['e'])
+
+            return
 
         t2v.train(params.settings['model']['max_epochs'], params.settings['model']['save_per_epoch'])
         t2v.plot_points()
@@ -113,18 +131,6 @@ def test_toys(args):
                     params.settings['graph'] = {'edge_types': edge_type, 'dir': dir, 'dup_edge': dup}
                     run(f'{args.teamsvecs}teamsvecs.pkl', f'{args.teamsvecs}indexes.pkl', args.model, f'{args.output}/{args.model.split(".")[0]}/', f'{args.output}/emb/')
 
-def test_real(args):
-    # test for all valid combinations on full data
-    for teamsvecs in args.teamsvecs:
-        args.output = teamsvecs
-        for edge_type in [([('skill', 'to', 'member')], 'sm'), ([('skill', 'to', 'team'), ('member', 'to', 'team')], 'stm')]:
-        # for edge_type in [([('skill', 'to', 'team'), ('member', 'to', 'team')], 'stm')]:
-            for dir in [False]:
-                for dup in ['mean']:  # add', 'mean', 'min', 'max', 'mul']:
-                    params.settings['graph'] = {'edge_types': edge_type, 'dir': dir, 'dup_edge': dup}
-                    run(f'{teamsvecs}teamsvecs.pkl', f'{teamsvecs}indexes.pkl', args.model,
-                        f'{args.output}/{args.model.split(".")[0]}/', f'{args.output}/emb/')
-
 # we can ignore mentioning the --output argument
 #python -u main.py -teamsvecs= ./../../../data/preprocessed/dblp/dblp.v12.json.filtered.mt75.ts3/ -model=gnn.n2v --output=./../../../data/preprocessed/dblp/dblp.v12.json.filtered.mt75.ts3/ --graph_only 1
 #python -u main.py -teamsvecs=./../../../data/preprocessed/dblp/toy.dblp.v12.json/ -model=gnn.n2v --output=./../../../data/preprocessed/dblp/toy.dblp.v12.json/
@@ -136,4 +142,23 @@ if __name__ == "__main__":
     # run(f'{args.teamsvecs}teamsvecs.pkl', f'{args.teamsvecs}indexes.pkl', args.model, f'{args.output}/{args.model.split(".")[0]}/')
 
     # test_toys(args)
-    test_real(args)
+
+    for teamsvecs in args.teamsvecs:
+        args.output = teamsvecs
+        # for edge_type in [([('skill', 'to', 'member')], 'sm')]:
+        for edge_type in [([('skill', 'to', 'member')], 'sm'), ([('skill', 'to', 'team'), ('member', 'to', 'team')], 'stm')]:
+        # for edge_type in [([('skill', 'to', 'team'), ('member', 'to', 'team')], 'stm')]:
+            for dir in [False]:
+                for dup in ['mean']:  # add', 'mean', 'min', 'max', 'mul']:
+                    params.settings['graph'] = {'edge_types': edge_type, 'dir': dir, 'dup_edge': dup}
+
+                    # change the relevant parameter in the params file based on the gnn args
+                    if args.e is not None: params.settings['model'][args.model]['e'] = args.e
+                    if args.d is not None: params.settings['model'][args.model]['d'] = args.d
+                    if args.ns is not None: params.settings['model'][args.model]['ns'] = args.ns
+                    if args.agg is not None: params.settings['model'][args.model]['agg'] = args.agg
+                    if args.graph_type is not None: params.settings['model'][args.model]['graph_type'] = args.graph_type
+                    else : params.settings['model'][args.model]['graph_type'] = edge_type[1] # take the value from the current loop
+
+                    run(f'{teamsvecs}teamsvecs.pkl', f'{teamsvecs}indexes.pkl', args.model,
+                        f'{args.output}/{args.model.split(".")[0]}/', f'{args.output}/emb/')
