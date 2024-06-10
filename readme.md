@@ -27,7 +27,7 @@ both variational and non-variational neural recommenders.
 - [1. Setup](#1-setup)
 - [2. Quickstart](#2-quickstart)
 - [3. Features](#3-features)
-  * [`Fairness aware Team Formation`](#31-adila-fairness-aware-team-formation)
+  * [`Transfer Learning with GNN`](#31-gnn--transfer-learning)
   * [`Datasets and Parallel Preprocessing`](#32-datasets-and-parallel-preprocessing)
   * [`Non-Temporal Neural Team Formation`](#33-non-temporal-neural-team-formation)
   * [`Temporal Neural Team Prediction`](#34-temporal-neural-team-prediction)
@@ -50,32 +50,23 @@ both variational and non-variational neural recommenders.
 
 
 ## 1. [Setup](https://colab.research.google.com/github/fani-lab/OpeNTF/blob/main/quickstart.ipynb)
-You need to have ``Python >= 3.8`` and install the following main packages, among others listed in [``requirements.txt``](requirements.txt):
-```
-torch>=1.9.0
-pytrec-eval-terrier==0.5.2
-gensim==3.8.3
-```
-By ``pip``, clone the codebase and install required packages:
+You need to have ``Python >= 3.8`` and install the required packages listed in [``requirements.txt``](requirements.txt):
+
+Using git, clone the codebase and using ``pip`` install the required packages:
 ```sh
 git clone --recursive https://github.com/Fani-Lab/opentf
 cd opentf
 pip install -r requirements.txt
 ```
-By [``conda``](https://www.anaconda.com/products/individual):
 
-```sh
-git clone --recursive https://github.com/Fani-Lab/opentf
-cd opentf
-conda env create -f environment.yml
-conda activate opentf
-```
-
-For installation of specific version of a python package due to, e.g., ``CUDA`` versions compatibility, one can edit [``requirements.txt``](requirements.txt) or [``environment.yml``](environment.yml) like as follows:
+For installation of specific version of a python package due to, e.g., ``CUDA`` versions compatibility, one can edit [``requirements.txt``](requirements.txt) and install them manually.
+For example - We used CUDA dependant pytorch and pytorch-geometric with the below set of installations : 
 
 ```
-# CUDA 10.1
-torch==1.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+# CUDA 12.1 for Torch and PyG
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 
+
+
 ```
 ## 2. Quickstart [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/fani-lab/Adila/blob/main/quickstart.ipynb)
 
@@ -93,12 +84,12 @@ python -u main.py -data ../data/raw/dblp/toy.dblp.v12.json -domain dblp -model t
 This script loads and preprocesses the same dataset [``toy.dblp.v12.json``](data/raw/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z), takes the teams from the the last year as the test set and trains the ``Bayesian`` neural model following our proposed streaming training strategy as explained in ``3.2.2. Temporal Neural Team Formation`` with two different input representations _i_) sparse vector represntation and _ii_) temporal skill vector represntation using default hyperparameters from [``./src/param.py``](./src/param.py).
 
 ## 3. Features
-#### **3.1. [`Adila`](https://github.com/fani-lab/Adila): Fairness aware Team Formation**
+#### **3.1. [`Transfer Learning with GNN`]:**
 
 While state-of-the-art neural team formation methods are able to efficiently analyze massive collections of experts to form effective collaborative teams, they largely ignore the fairness in recommended teams of experts. In `Adila`, we study the application of `fairness-aware` team formation algorithms to mitigate the potential popularity bias in the neural team formation models. We support two fairness notions namely, `equality of opportunity` and `demographic parity`. To achieve fairness, we utilize three deterministic greedy reranking algorithms (`det_greedy`, `det_cons`, `det_relaxed`) in addition to `fa*ir`, a probabilistic greedy reranking algorithm . 
 
 
-<p align="center"><img src='./misc/adila_flow.png' width="1000" ></p>
+<p align="center"><img src='./misc/gnn_pipeline.png' width="1000" ></p>
 
 
 For further details and demo, please visit [Adila's submodule](https://github.com/fani-lab/Adila).
@@ -161,10 +152,6 @@ i) Sparse vector representation (occurrence or boolean vector): See preprocessin
 
 ii) Dense vector representation ([``team2vec``](src/mdl/team2vec/team2doc2vec.py)): Inspired by paragraph vectors by [Le and Mikolov](https://cs.stanford.edu/~quocle/paragraph_vector.pdf), we consider a team as a document and skills as the document words (``embtype == 'skill'``). Using distributed memory model, we map skills into a real-valued embedding space. Likewise and separately, we consider members as the document words and map members into real-valued vectors (``embtype == 'member'``). We also consider mapping skills and members into the same embedding space (``embtype == 'joint'``). Our embedding method benefits from [``gensim``](https://radimrehurek.com/gensim/) library.
 
-iii) Temporal skill vector represntation ([``team2vec``](src/mdl/team2vec/team2doc2vec.py)): Inspired by [Hamilton et al.](https://aclanthology.org/P16-1141/), we also incorporate time information into the underlying neural model besides utilizing our proposed streaming training strategy. We used the distributed memory model of Doc2Vec to generate the real-valued joint embeddings of the subset of skills and time intervals, where the skills and time intervals are the words of the document (``embtype == 'dt2v'``).
-
-3) In OpeNTF2, The ``Nmt`` wrapper class is designed to make use of advanced transformer models and encoder-decoder models that include multiple ``LSTM`` or ``GRU`` cells, as well as various attention mechanisms. ``Nmt`` is responsible for preparing the necessary input and output elements and invokes the executables of ``opennmt-py`` by creating a new process using Python's ``subprocess`` module. Additionally, because the ``Nmt`` wrapper class inherits from ``Ntf``, these models can also take advantage of temporal training strategies through ``tNtf``.
-
 #### **3.6. Negative Sampling Strategies**
 
 As known, employing ``unsuccessful`` teams convey complementary negative signals to the model to alleviate the long-tail problem. Most real-world training datasets in the team formation domain, however, do not have explicit unsuccessful teams (e.g., collections of rejected papers.) In the absence of unsuccessful training instances, we proposed negative sampling strategies based on the ``closed-world`` assumption where no currently known successful group of experts for the required skills is assumed to be unsuccessful.  We study the effect of ``three`` different negative sampling strategies: two based on static distributions, and one based on adaptive noise distribution:
@@ -193,57 +180,31 @@ Here is a brief explanation of the models:
 
 ## 4. Results
 
-We used [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval) to evaluate the performance of models on the test set as well as on their own train sets (should overfit) and validation sets. We report the predictions, evaluation metrics on each test instance, and average on all test instances in ``./output/{dataset name}/{model name}/{model's running setting}/``.  For example:
+We used [``pytrec_eval_terrier``](https://pypi.org/project/pytrec-eval-terrier/) to evaluate the performance of models on the test set as well as on their own train sets (should overfit) and validation sets. Our model reports the predictions, evaluation metrics on each test instance, and average on all test instances in the format ``./output/{dataset name}/{model name}/{model's running setting}/``.  For example:
 
 1) ``f0.test.pred`` is the predictions per test instance for a model which is trained folds [1,2,3,4] and validated on fold [0].
 2) ``f0.test.pred.eval.csv`` is the values of evaluation metrics for the predictions per test instance
 3) ``f0.test.pred.eval.mean.csv`` is the average of values for evaluation metrics over all test instances.
 4) ``test.pred.eval.mean.csv`` is the average of values for evaluation metrics over all _n_ fold models.
 
+For ease of summarization, we put the entire set of average results across all methods and all dimensions in xlsx files mentioned in the next table.
+
 **Benchmarks at Scale**
 
-**1. Fair Team Formation Results**
-||min. #member's team: 75, min team size: 3, epochs: 20, learning rate: 0.1, hidden layer: [1, 100d], minibatch: 4096, #negative samples: 3|
-|--------|------|
-|Datasets|[dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/), [uspt](https://patentsview.org/download/data-download-tables) (running ...)|
-|Metrics|ndkl, map@2,5,10, ndcg@2,5,10, auc|
-|Sensitive Attributes| popularity, gender(running ...)|
-|Baselines|{bnn, random}×{sparse, emb}×{unigram_b}|
-|Results|for further details and results, please visit [Adila's submodule](https://github.com/fani-lab/Adila)|
+**Neural Team Formation w/o Transfer Learning**
 
-The following table is a sample result of Adila module's reranking on imdb dataset and bnn embedding baseline:
-<p align="center"><img src='./misc/bnn_emb.png'></p>
-
-**2. Non-Temporal Neural Team Formation**
-
-||min. #member's team: 75, min team size: 3, epochs: 20, learning rate: 0.1, hidden layer: [1, 100d], minibatch: 4096, #negative samples: 3|
-|--------|------|
-|Datasets|[dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/), [uspt](https://patentsview.org/download/data-download-tables) (running ...)|
-|Metrics|recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc|
-|Baselines|{fnn,bnn}×{sparse, emb}×{none, uniform, unigram, unigram_b}|
-|Results|[``./output/dblp.v12.json.filtered.mt75.ts3/``](./output/dblp.v12.json.filtered.mt75.ts3/), [``./output/title.basics.tsv.filtered.mt75.ts3/``](./output/title.basics.tsv.filtered.mt75.ts3/)|
+|              | min. #member's team: 120 (dblp) or 75 (imdb), min team size: 3, epochs: 25, learning rate: 0.0001 (fnn), 0.01 (bnn), hidden layer: [1, 128d], minibatch: 2048, #negative samples: 3 |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Datasets     | [dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/)                                                                                 |
+| Metrics      | recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc                                                                                                                               |
+| Baselines    | {fnn,bnn}×{sparse,{emb}×{d2v,m2v,gs,gat,gatv2,han,gin,gine}}×{uniform}                                                                                                              |
+| Full Results | [``./output/dblp.v12.json.filtered.mt120.ts3/``](./output/dblp.v12.json.filtered.mt120.ts3/), [``./output/title.basics.tsv.filtered.mt75.ts3/``](./output/title.basics.tsv.filtered.mt75.ts3/)                       |
 
 <p align="center">
-<img src='https://user-images.githubusercontent.com/8619934/154041216-c80cccfb-70a2-4831-8781-cdb4718fb00e.png' >
-<img src='https://user-images.githubusercontent.com/8619934/154041087-e4d99b1e-eb6b-456a-837b-840e4bd5090a.png' >
-
-Full predictions of all models on test and training sets and the values of evaluation metrics, per instance and average, are available in a rar file of size ``74.8GB`` and will be delivered upon request! 
-
-**3. Temporal Neural Team Prediction**
-
-We kick-started our experiments based on the best results from the non-temporal neural team formation experiments.
-
-||min. #member's team: 75, min team size: 3, epochs: 20, learning rate: 0.1, hidden layer: [1, 128d], minibatch: 128, #negative samples: 3|
-|--------|------|
-|Datasets|[dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/), [uspt](https://patentsview.org/download/data-download-tables)|
-|Metrics|recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc|
-|Baselines|{bnn, tbnn}×{sparse, emb, dt2v_emb}×{unigram_b},{[rrn](https://dl.acm.org/doi/10.1145/3018661.3018689)}|
-|Results|[``./output/dblp.v12.json.filtered.mt75.ts3/``](./output/dblp.v12.json.filtered.mt75.ts3/), [``./output/title.basics.tsv.filtered.mt75.ts3/``](./output/title.basics.tsv.filtered.mt75.ts3/), [``./output/patent.tsv.filtered.mt75.ts3/``](./output/patent.tsv.filtered.mt75.ts3/)|
-
-<p align="center"><img src='./output/ecir_results.PNG'></p>
-
-
-
+<img src='./misc/gnn/fnn.dblp.png' >
+<img src='./misc/gnn/bnn.dblp.png' >
+<img src='./misc/gnn/fnn.imdb.png' >
+<img src='./misc/gnn/bnn.imdb.png' >
 
 ## 5. Acknowledgement:
 We benefit from  bayesian-torch (https://github.com/IntelLabs/bayesian-torch), PyG (https://github.com/pyg-team/pytorch_geometric), [``pytrec_eval``](https://github.com/cvangysel/pytrec_eval), [``gensim``](https://radimrehurek.com/gensim/), [Josh Feldman's blog](https://joshfeldman.net/WeightUncertainty/) and other libraries. We would like to thank the authors of these libraries and helpful resources.
