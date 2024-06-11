@@ -27,6 +27,7 @@ from src.mdl.gatv2 import Model as GATV2Model
 from src.mdl.han import Model as HANModel
 from src.mdl.gin import Model as GINModel
 from src.mdl.gine import Model as GINEModel
+from src.mdl.earlystopping import EarlyStopping
 from src.mdl.graph_sage_bk import Model as Model_bk
 import tqdm as tqdm
 import time
@@ -189,16 +190,13 @@ def create(data, model_name):
 # learning with batching
 def learn_batch(loader, is_directed):
     start = time.time()
-    min_loss = 100000000000
+    epochs_taken = 0
     loss_array = []
     val_auc_array = []
     val_loss_array = []
 
+    earlystopping = EarlyStopping(patience=5, verbose=True, delta=0.01,path=f"{model_output}/state_dict_model.e{epochs}.pt", trace_func=print,save_model=False)
     for epoch in range(1, epochs + 1):
-        optimizer.zero_grad() # ensuring clearing out the gradients before each validation loop
-        l1, l2 = eval_batch(val_loader, is_directed)
-        val_loss_array.append(l1)
-        val_auc_array.append(l2)
         total_loss = 0
         total_examples = 0
         torch.cuda.empty_cache()
@@ -226,11 +224,21 @@ def learn_batch(loader, is_directed):
             print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.6f}.............\n")
         loss_array.append((total_loss / total_examples))
 
+        l1, l2 = eval_batch(val_loader, is_directed)
+        val_loss_array.append(l1)
+        val_auc_array.append(l2)
+
+        epochs_taken += 1
+        earlystopping(val_loss_array[-1], model)
+        if earlystopping.early_stop:
+            print(f"Early Stopping Triggered at epoch: {epoch}")
+            break
+
     # plot the figure and save
     fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.png'
-    plot_graph(torch.arange(1, epochs + 1, 1), loss_array, val_loss_array, fig_output=fig_output)
+    plot_graph(torch.arange(1, epochs_taken + 1, 1), loss_array, val_loss_array, fig_output=fig_output)
     fig_output = f'{model_output}/{model_name}.{graph_type}.undir.{agg}.e{epochs}.ns{int(ns)}.b{b}.d{dim}.val_auc_per_epoch.png'
-    plot_graph(torch.arange(1, epochs + 1, 1), val_auc_array, xlabel='Epochs', ylabel='Val AUC', title=f'Validation AUC vs Epochs for Embedding Generation', fig_output=fig_output)
+    plot_graph(torch.arange(1, epochs_taken + 1, 1), val_auc_array, xlabel='Epochs', ylabel='Val AUC', title=f'Validation AUC vs Epochs for Embedding Generation', fig_output=fig_output)
     print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
 
 # loader can be test or can be validation
