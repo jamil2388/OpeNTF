@@ -86,10 +86,8 @@ This script loads and preprocesses the same dataset [``toy.dblp.v12.json``](data
 While state-of-the-art neural team formation methods are able to efficiently analyze massive collections of experts to form effective collaborative teams, they largely ignore the fairness in recommended teams of experts. In `Adila`, we study the application of `fairness-aware` team formation algorithms to mitigate the potential popularity bias in the neural team formation models. We support two fairness notions namely, `equality of opportunity` and `demographic parity`. To achieve fairness, we utilize three deterministic greedy reranking algorithms (`det_greedy`, `det_cons`, `det_relaxed`) in addition to `fa*ir`, a probabilistic greedy reranking algorithm . 
 
 
-<p align="center"><img src='./misc/gnn_pipeline.png' width="1000" ></p>
+<p align="center"><img src='./misc/gnn/gnn_pipeline.jpg' width="1000" ></p>
 
-
-For further details and demo, please visit [Adila's submodule](https://github.com/fani-lab/Adila).
 
 #### **3.2. Datasets and Parallel Preprocessing**
 
@@ -141,7 +139,17 @@ The input to the models is the vector representations for (_temporal_) skills an
 
 i) Sparse vector representation (occurrence or boolean vector): See preprocessing section above.
 
-ii) Dense vector representation ([``team2vec``](src/mdl/team2vec/team2doc2vec.py)): Inspired by paragraph vectors by [Le and Mikolov](https://cs.stanford.edu/~quocle/paragraph_vector.pdf), we consider a team as a document and skills as the document words (``embtype == 'skill'``). Using distributed memory model, we map skills into a real-valued embedding space. Likewise and separately, we consider members as the document words and map members into real-valued vectors (``embtype == 'member'``). We also consider mapping skills and members into the same embedding space (``embtype == 'joint'``). Our embedding method benefits from [``gensim``](https://radimrehurek.com/gensim/) library.
+ii) Dense vector representation ([``team2vec``](src/mdl/team2vec/main.py)) channeling into several sets of embedding generation methods as follows:  
+
+  A) Doc2Vec: Inspired by paragraph vectors by [Le and Mikolov](https://cs.stanford.edu/~quocle/paragraph_vector.pdf), we consider a team as a document and skills as the document words (``embtype == 'skill'``). Using distributed memory model, we map skills into a real-valued embedding space. Our embedding method benefits from [``gensim``](https://radimrehurek.com/gensim/) library.
+
+  B) Graph-based: This class of representation is divided into Random-walk-based and Message-passing-based embedding generation methods. 
+  For meta-path-based methods (Metapath2Vec), Each meta-path-based random walk is considered as a document whose words are the nodes followed by [word2vec](https://arxiv.org/abs/1301.3781) to 
+  produce 𝑑-dimensional vector representations for the skill nodes.
+
+  For message-passing-based methods i.e. Graph Neural Network methods (GraphSAGE, Graph Attention Network etc.), we use message passing to
+  learn a node vector (``node_type == skill``) based on a recursive aggregation (``agg``) and a combination (``comb``) of direct (1-hop) or indirect (𝑘-hop) neighbouring nodes’
+  vectors via neural message passing. 
 
 #### **3.6. Negative Sampling Strategies**
 
@@ -159,15 +167,35 @@ To include a negative sampling strategy, there are two parameters for a model to
 
 #### **3.7. Run**
 
-The pipeline accepts three required list of values:
+The entire codebase has two distinct pipelines:
+
+1. ``./src/mdl/team2vec/main.py`` handling the embedding generation step in case of dense vector input for the neural team formation
+2. ``./src/main.py`` handling the main pipeline of the neural team formation
+
+The embedding generation pipeline consists of the models``d2v (Doc2Vec), m2v (Metapath2Vec), gs (GraphSAGE), gat (GraphAttention), gatv2 (GraphAttentionV2),
+han (Heterogeneous Attention Network), gin (Graph Isomorphism Network) and gine (GIN-Edge feature enhanced).``
+This pipeline accepts the following required arguments:
+1) ``-teamsvecs``: The path to the teamsvecs.pkl and indexes.pkl files; e.g., ``-teamsvecs ../data/preprocessed/dblp/toy.dblp.v12.json/``
+2) ``-model``: The embedding model; e.g., ``-model d2v, m2v, gs ...``
+
+To generate GNN based embeddings, it is recommended to include additional arguments as follows:  
+
+1) ``--agg``: The aggregation method used for the graph data; e.g : ``mean, none, max, min ...``
+2) ``--d``: Embedding dimension; e.g : ``4, 8, 16, 32 ...``
+3) ``--e``: Train epochs ; e.g : ``5, 20, 100 ...``
+
+The neural network pipeline accepts three required list of values:
 1) ``-data``: list of path to the raw datafiles, e.g., ``-data ./../data/raw/dblp/dblp.v12.json``, or the main file of a dataset, e.g., ``-data ./../data/raw/imdb/title.basics.tsv``
 2) ``-domain``: list of domains of the raw data files that could be ``dblp``, ``imdb``, or `uspt`; e.g., ``-domain dblp imdb``.
-3) ``-model``: list of baseline models that could be ``fnn``, ``fnn_emb``, ``bnn``, ``bnn_emb``, ``tfnn``, ``tfnn_emb``, ``tfnn_dt2v_emb``, ``tbnn``, ``tbnn_emb``, ``tbnn_dt2v_emb``, ``random``; e.g., ``-model random fnn bnn tfnn tbnn tfnn_dt2v_emb tbnn_dt2v_emb``.
+3) ``-model``: list of baseline models that could be ``fnn``, ``bnn``; e.g., ``-model fnn bnn``.
+
+If the input type is a dense vector from GNN methods, an additional list of arguments are needed as follows:
+1) ``--emb_model``: The embedding model; e.g., ``--emb_model gs gat gatv2 han ...``
+2)  ``--emb_graph_type`` The collaboration graph type used for embedding generation e.g., ``sm or stm``
+
 
 Here is a brief explanation of the models:
 - ``fnn``, ``bnn``, ``fnn_emb``, ``bnn_emb``: follows the standard machine learning training procedure.
-- ``tfnn``, ``tbnn``, ``tfnn_emb``, ``tbnn_emb``: follows our proposed streaming training strategy without adding temporal information to the input of the models.
-- ``tfnn_dt2v_emb``, ``tbnn_dt2v_emb``: follows our proposed streaming training strategy and employs temporal skills as input of the models.
 
 ## 4. Results
 
@@ -178,18 +206,18 @@ We used [``pytrec_eval_terrier``](https://pypi.org/project/pytrec-eval-terrier/)
 3) ``f0.test.pred.eval.mean.csv`` is the average of values for evaluation metrics over all test instances.
 4) ``test.pred.eval.mean.csv`` is the average of values for evaluation metrics over all _n_ fold models.
 
-For ease of summarization, we put the entire set of average results across all methods and all dimensions in xlsx files mentioned in the next table.
+For ease of summarization, we put the entire set of average results (over all folds) across all methods and all dimensions in xlsx files mentioned in the next table.
 
 **Benchmarks at Scale**
 
 **Neural Team Formation w/o Transfer Learning**
 
-|              | min. #member's team: 120 (dblp) or 75 (imdb), min team size: 3, epochs: 25, learning rate: 0.0001 (fnn), 0.01 (bnn), hidden layer: [1, 128d], minibatch: 2048, #negative samples: 3 |
-|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Datasets     | [dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/)                                                                                 |
-| Metrics      | recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc                                                                                                                               |
-| Baselines    | {fnn,bnn}×{sparse,{emb}×{d2v,m2v,gs,gat,gatv2,han,gin,gine}}×{uniform}                                                                                                              |
-| Full Results | [``./output/dblp.v12.json.filtered.mt120.ts3/``](./output/dblp.v12.json.filtered.mt120.ts3/), [``./output/title.basics.tsv.filtered.mt75.ts3/``](./output/title.basics.tsv.filtered.mt75.ts3/)                       |
+|              | min. #member's team: 120 (dblp) and 75 (imdb), min team size: 3, epochs: 25, learning rate: 0.0001 (fnn), 0.01 (bnn), hidden layer: [1, 128d], minibatch: 2048, #negative samples: 3           |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Datasets     | [dblp.v12](https://originalstatic.aminer.cn/misc/dblp.v12.7z), [imdb](https://imdb.com/interfaces/)                                                                                            |
+| Metrics      | recall@2,5,10, map@2,5,10, ndcg@2,5,10, p@2,5,10, auc                                                                                                                                          |
+| Baselines    | {fnn,bnn}×{sparse,{emb}×{d2v,m2v,gs,gat,gatv2,han,gin,gine}}×{uniform}                                                                                                                         |
+| Full Results | [``./output/dblp.v12.json.filtered.mt120.ts3/``](./output/dblp.v12.json.filtered.mt120.ts3/), [``./output/title.basics.tsv.filtered.mt75.ts3/``](./output/title.basics.tsv.filtered.mt75.ts3/) |
 
 <p align="center">
 <img src='./misc/gnn/fnn.dblp.png' >
