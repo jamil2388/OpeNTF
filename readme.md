@@ -27,17 +27,14 @@ both variational and non-variational neural recommenders.
 - [1. Setup](#1-setup)
 - [2. Quickstart](#2-quickstart)
 - [3. Features](#3-features)
-  * [`Transfer Learning with GNN`](#31-gnn--transfer-learning)
+  * [`Transfer Learning with GNN`](#31-gnn-transfer-learning)
   * [`Datasets and Parallel Preprocessing`](#32-datasets-and-parallel-preprocessing)
-  * [`Non-Temporal Neural Team Formation`](#33-non-temporal-neural-team-formation)
-  * [`Temporal Neural Team Prediction`](#34-temporal-neural-team-prediction)
+  * [`Neural Team Formation`](#33-non-temporal-neural-team-formation)
   * [`Model Architecture`](#35-model-architecture)
   * [`Negative Sampling Strategies`](#36-negative-sampling-strategies)
   * [`Run`](#37-run)
 - [4. Results](#4-results)
 - [5. Acknowledgement](#5-acknowledgement)
-- [6. License](#6-license)
-- [7. Citation](#7-citation)
 
 
 
@@ -84,7 +81,7 @@ python -u main.py -data ../data/raw/dblp/toy.dblp.v12.json -domain dblp -model t
 This script loads and preprocesses the same dataset [``toy.dblp.v12.json``](data/raw/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z), takes the teams from the the last year as the test set and trains the ``Bayesian`` neural model following our proposed streaming training strategy as explained in ``3.2.2. Temporal Neural Team Formation`` with two different input representations _i_) sparse vector represntation and _ii_) temporal skill vector represntation using default hyperparameters from [``./src/param.py``](./src/param.py).
 
 ## 3. Features
-#### **3.1. [`Transfer Learning with GNN`]:**
+#### **3.1. Transfer Learning with GNN**
 
 While state-of-the-art neural team formation methods are able to efficiently analyze massive collections of experts to form effective collaborative teams, they largely ignore the fairness in recommended teams of experts. In `Adila`, we study the application of `fairness-aware` team formation algorithms to mitigate the potential popularity bias in the neural team formation models. We support two fairness notions namely, `equality of opportunity` and `demographic parity`. To achieve fairness, we utilize three deterministic greedy reranking algorithms (`det_greedy`, `det_cons`, `det_relaxed`) in addition to `fa*ir`, a probabilistic greedy reranking algorithm . 
 
@@ -118,15 +115,9 @@ The sparse matrices and the indices will be persisted in [``data/preprocessed/{d
 Please note that the preprocessing step will be executed once. Subsequent runs load the persisted pickle files. In order to regenerate them, one should simply delete them. 
 
 
-#### **3.3. Non-Temporal Neural Team Formation**
+#### **3.3. Neural Team Formation**
 
 We randomly take ``85%`` of the dataset for the train-validation set and ``15%`` as the test set, i.e., the model never sees these instances during training or model tuning. You can change ``train_test_split`` parameter in [``./src/param.py``](./src/param.py).
-
-#### **3.4. Temporal Neural Team Prediction**
-
-Previous works in team formation presumed that teams follow the i.i.d property and hence when training their models they followed the bag of teams approach, where they train and validate their models on a shuffled dataset of teams. Moreover, they were interpolative and did not try to predict _future_ successful teams. In this work, we aim at extrapolating and predicting _future_ teams of experts. We sort the teams by time intervals and train a neural model incrementally  through the ordered collection of teams in [C<sub>0</sub>, ..C<sub>t</sub>, ..C<sub>T</sub>]. As can be seen in Figure below, after random initialization of skills’ and experts’ embeddings at t=0, we start training the model on the teams in the first time interval C<sub>0</sub> for a number of epochs, then we continue with training  on the second time interval C<sub>1</sub> using the learned embeddings from the previous time interval and so forth until we finish the training on the last training time interval C<sub>t=T</sub>. We believe that using this approach, will help the model understand how experts’ skills and collaborative ties evolve through time and the final embeddings are their optimum representation in the latent space to predict _future_ successful teams at time interval C<sub>t=T+1</sub>.
-
-<p align="center"><img src='./src/mdl/tntf.png' width="600"></p>
 
 
 
