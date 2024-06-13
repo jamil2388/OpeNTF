@@ -9,6 +9,7 @@ from torch_geometric.data import Data, HeteroData
 import torch_geometric.transforms as T
 from torch_geometric.loader import LinkNeighborLoader
 
+from mdl.earlystopping import EarlyStopping
 from team2vec import Team2Vec
 
 class Gnn(Team2Vec):
@@ -102,7 +103,7 @@ class Gnn(Team2Vec):
         torch.cuda.empty_cache()
         train_data.to(self.device)
         # the train_data is needed to collect info about the metadata
-        self.model, self.optimizer = self.create_gnn_model()
+        self.model, self.optimizer = self.create_gnn_model(train_data)
 
     def train(self, epochs, save_per_epoch=False):
         self.learn(self.train_loader, epochs)
@@ -211,32 +212,33 @@ class Gnn(Team2Vec):
         return train_data, val_data, test_data, edge_types, rev_edge_types
 
     # d = dim
-    def create_gnn_model(self):
+    # we pass only train_data for providing metadata to the model
+    def create_gnn_model(self, data):
 
         if self.model_name == 'gs':
             from gs import Model as GSModel
             # gs
-            model = GSModel(hidden_channels=self.d, data=self.data)
+            model = GSModel(hidden_channels=self.d, data=data)
         elif self.model_name == 'gin':
             from gin import Model as GINModel
             # gin
-            model = GINModel(hidden_channels=self.d, data=self.data)
+            model = GINModel(hidden_channels=self.d, data=data)
         elif self.model_name == 'gat':
             from gat import Model as GATModel
             # gat
-            model = GATModel(hidden_channels=self.d, data=self.data)
+            model = GATModel(hidden_channels=self.d, data=data)
         elif self.model_name == 'gatv2':
             from gatv2 import Model as GATv2Model
             # gatv2
-            model = GATv2Model(hidden_channels=self.d, data=self.data)
+            model = GATv2Model(hidden_channels=self.d, data=data)
         elif self.model_name == 'han':
             from han import Model as HANModel
             # han
-            model = HANModel(hidden_channels=self.d, data=self.data)
+            model = HANModel(hidden_channels=self.d, data=data)
         elif self.model_name == 'gine':
             from gine import Model as GINEModel
             # gine
-            model = GINEModel(hidden_channels=self.d, data=self.data)
+            model = GINEModel(hidden_channels=self.d, data=data)
 
         print(model)
         print(f'\nDevice = {self.device}')
@@ -269,16 +271,15 @@ class Gnn(Team2Vec):
 
     def learn(self, loader, epochs):
         start = time.time()
-        min_loss = 100000000000
+        epochs_taken = 0
         loss_array = []
         val_auc_array = []
         val_loss_array = []
-
+        earlystopping = EarlyStopping(patience=5, verbose=True, delta=0.01,
+                                      path=f"{self.model_output}/state_dict_model.e{epochs}.pt", trace_func=print, save_model=False)
         for epoch in range(1, epochs + 1):
             self.optimizer.zero_grad()  # ensuring clearing out the gradients before each validation loop
-            l1, l2 = self.eval(self.val_loader)
-            val_loss_array.append(l1)
-            val_auc_array.append(l2)
+
             total_loss = 0
             total_examples = 0
             torch.cuda.empty_cache()
@@ -303,15 +304,27 @@ class Gnn(Team2Vec):
                     total_loss += float(
                         loss) * pred.numel()  # each batch might not contain same number of predictions, so we normalize it using the individual number of preds each turn
                     total_examples += pred.numel()
+            avg_loss = (total_loss / total_examples)
             if (epoch % 10 == 0):
-                print(f"\n.............Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.6f}.............\n")
-            loss_array.append((total_loss / total_examples))
+                print(f"\n.............Epoch: {epoch:03d}, Loss: {avg_loss:.6f}.............\n")
+            loss_array.append(avg_loss)
+
+            self.optimizer.zero_grad()
+            l1, l2 = self.eval(self.val_loader)
+            val_loss_array.append(l1)
+            val_auc_array.append(l2)
+
+            epochs_taken += 1
+            earlystopping(val_loss_array[-1], self.model)
+            if earlystopping.early_stop:
+                print(f"Early Stopping Triggered at epoch: {epoch}")
+                break
 
         # plot the figure and save
         fig_output = f'{self.model_output}/{self.model_name}.{self.graph_type}.undir.{self.agg}.e{epochs}.ns{int(self.ns)}.b{self.b}.d{self.d}.png'
-        self.plot_graph(torch.arange(1, epochs + 1, 1), loss_array, val_loss_array, fig_output=fig_output)
+        self.plot_graph(torch.arange(1, epochs_taken + 1, 1), loss_array, val_loss_array, fig_output=fig_output)
         fig_output = f'{self.model_output}/{self.model_name}.{self.graph_type}.undir.{self.agg}.e{epochs}.ns{int(self.ns)}.b{self.b}.d{self.d}.val_auc_per_epoch.png'
-        self.plot_graph(torch.arange(1, epochs + 1, 1), val_auc_array, xlabel='Epochs', ylabel='Val AUC',
+        self.plot_graph(torch.arange(1, epochs_taken + 1, 1), val_auc_array, xlabel='Epochs', ylabel='Val AUC',
                    title=f'Validation AUC vs Epochs for Embedding Generation', fig_output=fig_output)
         print(f'\nit took {(time.time() - start) / 60} mins || {(time.time() - start) / 3600} hours to train the model\n')
 
